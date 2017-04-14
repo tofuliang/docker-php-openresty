@@ -55,10 +55,10 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.3.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.3.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="e4887c2634778e37fd962fbdf5c4a7d32cd708482fe07b448804625570cb0bb0"
-ARG PHP_MD5="d604d688be17f4a05b99dbb7fb9581f4"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.4.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.4.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="71514386adf3e963df087c2044a0b3747900b8b1fc8da3a99f0a0ae9180d300b"
+ARG PHP_MD5="a74c13f8779349872b365e6732e8c98e"
 
 # persistent / runtime deps
 ARG PHPIZE_DEPS="\
