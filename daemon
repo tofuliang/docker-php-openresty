@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ ! -e /root/.ssh/ ] && mkdir -p /root/.ssh/
+
+[ -f /host/id_rsa.pub ] && cp /host/id_rsa.pub /root/.ssh/authorized_keys && chown 0.0 /root/.ssh/authorized_keys
+
+[ -f /host/id_rsa ] && cp /host/id_rsa /root/.ssh/id_rsa && chown 0.0 /root/.ssh/id_rsa
+
+/usr/bin/supervisord -c /etc/supervisor/supervisord.conf

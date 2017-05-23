@@ -6,7 +6,7 @@ FROM alpine:3.4
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.11.2.2"
+ARG RESTY_VERSION="1.11.2.3"
 ARG RESTY_LUAROCKS_VERSION="2.3.0"
 ARG RESTY_OPENSSL_VERSION="1.0.2k"
 ARG RESTY_PCRE_VERSION="8.39"
@@ -55,10 +55,10 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.4.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.4.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="71514386adf3e963df087c2044a0b3747900b8b1fc8da3a99f0a0ae9180d300b"
-ARG PHP_MD5="a74c13f8779349872b365e6732e8c98e"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.5.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.5.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="d149a3c396c45611f5dc6bf14be190f464897145a76a8e5851cf18ff7094f6ac"
+ARG PHP_MD5="fb0702321c7aceac68c82b8c7a10d196"
 
 # persistent / runtime deps
 ARG PHPIZE_DEPS="\
@@ -317,6 +317,7 @@ ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ADD etc/supervisor /etc/supervisor
 ADD etc/php/php.d /usr/local/etc/php/php.d/
 ADD etc/php/php-fpm.d /usr/local/etc/php-fpm.d/
+ADD daemon /usr/local/bin/daemon
 
 # Expose ports
 # SSH
@@ -327,4 +328,4 @@ EXPOSE 443
 # Xdebug
 EXPOSE 9001
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["/usr/local/bin/daemon"]
