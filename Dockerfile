@@ -118,7 +118,7 @@ RUN set -x \
 # http://git.alpinelinux.org/cgit/aports/tree/main/lighttpd/lighttpd.pre-install?h=v3.3.2
 # http://git.alpinelinux.org/cgit/aports/tree/main/nginx-initscripts/nginx-initscripts.pre-install?h=v3.3.2
     \
-    && mkdir -p $PHP_INI_DIR/php.d \
+    && mkdir -p $PHP_INI_DIR/php/conf.d \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
@@ -163,7 +163,7 @@ RUN set -x \
     && cd /usr/src/php \
     && ./configure \
         --with-config-file-path="$PHP_INI_DIR" \
-        --with-config-file-scan-dir="$PHP_INI_DIR/php.d" \
+        --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
         \
         --disable-cgi \
         \
@@ -236,7 +236,7 @@ RUN set -x \
     && docker-php-ext-enable redis yac yaf swoole \
 # strip 所有扩展
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20151012/opcache.a \
-    && echo 'zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20160303/opcache.so' >  /usr/local/etc/php.d/docker-php-ext-opcache.ini \
+    && echo 'zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20160303/opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip /usr/local/lib/php/extensions/no-debug-non-zts-20160303/* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
@@ -315,7 +315,7 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin/:/usr/local/openresty/nginx/sbin/
 ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 
 ADD etc/supervisor /etc/supervisor
-ADD etc/php/php.d /usr/local/etc/php/php.d/
+ADD etc/php/conf.d /usr/local/etc/php/conf.d/
 ADD etc/php/php-fpm.d /usr/local/etc/php-fpm.d/
 ADD daemon /usr/local/bin/daemon
 

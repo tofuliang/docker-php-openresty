@@ -22,3 +22,5 @@ web:
       PHP_IDE_CONFIG: serverName=Docker-PHP71
       TERM: xterm
     restart: always
+    privileged: true
+    cap_add: ['all']
