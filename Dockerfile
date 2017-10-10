@@ -144,6 +144,7 @@ RUN set -x \
     && make \
     && make install \
     && rm -fr /tmp/del \
+    && cd .. \
     && wget -O php.tar.xz "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
