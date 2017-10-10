@@ -136,7 +136,7 @@ RUN set -x \
     mkdir -p /usr/src; \
     cd /usr/src; \
     \
-    && wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz \
+    wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz \
     && tar xzf libiconv-1.15.tar.gz \
     && cd libiconv-1.15 \
     && sed -i 's/_GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");/#if HAVE_RAW_DECL_GETS\n_GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");\n#endif/g' srclib/stdio.in.h \
