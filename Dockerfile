@@ -9,7 +9,7 @@ MAINTAINER tofuiang <tofuliang@gmail.com>
 ARG RESTY_VERSION="1.11.2.5"
 ARG RESTY_LUAROCKS_VERSION="2.3.0"
 ARG RESTY_OPENSSL_VERSION="1.0.2k"
-ARG RESTY_PCRE_VERSION="8.39"
+ARG RESTY_PCRE_VERSION="8.40"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
     --with-http_addition_module \
@@ -286,18 +286,6 @@ RUN set -x \
         openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
         openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
         pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
-    && curl -fSkL --retry 5 http://luarocks.org/releases/luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz -o luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
-    && tar xzf luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
-    && cd luarocks-${RESTY_LUAROCKS_VERSION} \
-    && ./configure \
-        --prefix=/usr/local/openresty/luajit \
-        --with-lua=/usr/local/openresty/luajit \
-        --lua-suffix=jit-2.1.0-beta2 \
-        --with-lua-include=/usr/local/openresty/luajit/include/luajit-2.1 \
-    && make build \
-    && make install \
-    && cd /tmp \
-    && rm -rf luarocks-${RESTY_LUAROCKS_VERSION} luarocks-${RESTY_LUAROCKS_VERSION}.tar.gz \
     && { find /usr/local/openresty -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     \
 #==============OPENRESTY-END==============
