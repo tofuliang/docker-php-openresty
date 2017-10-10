@@ -134,7 +134,7 @@ RUN set -x \
     \
 #==============PHP-START==============
     mkdir -p /usr/src; \
-    && cd /usr/src; \
+    cd /usr/src; \
     \
     && wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz \
     && tar xzf libiconv-1.15.tar.gz \
