@@ -6,7 +6,7 @@ FROM alpine:3.4
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.11.2.3"
+ARG RESTY_VERSION="1.11.2.5"
 ARG RESTY_LUAROCKS_VERSION="2.3.0"
 ARG RESTY_OPENSSL_VERSION="1.0.2k"
 ARG RESTY_PCRE_VERSION="8.39"
@@ -55,10 +55,10 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.5.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.5.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="d149a3c396c45611f5dc6bf14be190f464897145a76a8e5851cf18ff7094f6ac"
-ARG PHP_MD5="fb0702321c7aceac68c82b8c7a10d196"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.10.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.10.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="2b8efa771a2ead0bb3ae67b530ca505b5b286adc873cca9ce97a6e1d6815c50b"
+ARG PHP_MD5="de80c2f119d2b864c65f114ba3e438f1"
 
 # persistent / runtime deps
 ARG PHPIZE_DEPS="\
@@ -134,9 +134,17 @@ RUN set -x \
     \
 #==============PHP-START==============
     mkdir -p /usr/src; \
-    cd /usr/src; \
+    && cd /usr/src; \
     \
-    wget -O php.tar.xz "$PHP_URL"; \
+    && wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz \
+    && tar xzf libiconv-1.15.tar.gz \
+    && cd libiconv-1.15 \
+    && sed -i 's/_GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");/#if HAVE_RAW_DECL_GETS\n_GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");\n#endif/g' srclib/stdio.in.h \
+    && ./configure --prefix=/usr --mandir=/tmp/del --docdir=/tmp/del --htmldir=/tmp/del --dvidir=/tmp/del --pdfdir=/tmp/del --psdir=/tmp/del \
+    && make \
+    && make install \
+    && rm -fr /tmp/del \
+    && wget -O php.tar.xz "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
         echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
@@ -226,13 +234,13 @@ RUN set -x \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.1 -o /usr/src/tideways-4.1.1.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.1.tar.gz -C /usr/src \
-    && cd /usr/src/php-profiler-extension-4.1.1 \
+    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.2 -o /usr/src/tideways-4.1.2.tar.gz \
+    && tar xzf /usr/src/tideways-4.1.2.tar.gz -C /usr/src \
+    && cd /usr/src/php-profiler-extension-4.1.2 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.1 yaf-3.0.4 swoole-2.0.7 xdebug \
+    && pecl install redis yac-2.0.2 yaf-3.0.5 swoole-2.0.9 xdebug \
     && docker-php-ext-enable redis yac yaf swoole \
 # strip 所有扩展
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20151012/opcache.a \
