@@ -130,6 +130,8 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
+    && apk add --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/testing \
+            gnu-libiconv \
     ; \
     \
 #==============PHP-START==============
@@ -301,6 +303,7 @@ RUN set -x \
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin/:/usr/local/openresty/nginx/sbin/:/usr/local/openresty/bin/
 ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
+ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 ADD etc/supervisor /etc/supervisor
 ADD etc/php/conf.d /usr/local/etc/php/conf.d/
