@@ -1,15 +1,14 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 
-FROM alpine:3.6
+FROM alpine:3.7
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.11.2.5"
-ARG RESTY_LUAROCKS_VERSION="2.3.0"
+ARG RESTY_VERSION="1.13.6.2"
 ARG RESTY_OPENSSL_VERSION="1.0.2k"
-ARG RESTY_PCRE_VERSION="8.40"
+ARG RESTY_PCRE_VERSION="8.42"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
     --with-http_addition_module \
@@ -40,6 +39,15 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream_ssl_module \
     --with-threads \
     "
+ARG RESTY_CONFIG_OPTIONS_MORE=""
+
+LABEL resty_version="${RESTY_VERSION}"
+LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
+LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
+LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
+LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
+
+# These are not intended to be user-specified
 ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION}"
 
 ARG PHP_INI_DIR="/usr/local/etc"
@@ -56,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.4.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.4.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="7916b1bd148ddfd46d7f8f9a517d4b09cd8a8ad9248734e7c8dd91ef17057a88"
+ARG PHP_URL="https://secure.php.net/get/php-7.2.7.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.7.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="eb01c0153b3baf1f64b8b044013ce414b52fede222df3f509e8ff209478f31f0"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -79,6 +87,7 @@ ARG PHPIZE_DEPS="\
         coreutils \
         libressl-dev \
         libsodium-dev \
+        imagemagick-dev \
         "
 
 ARG PHP_DEPS="\
@@ -88,6 +97,7 @@ ARG PHP_DEPS="\
         xz \
 # https://github.com/docker-library/php/issues/494
         libressl \
+        imagemagick \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
@@ -160,7 +170,8 @@ RUN set -x \
             gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
         done; \
         gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-        rm -r "$GNUPGHOME"; \
+	command -v gpgconf > /dev/null && gpgconf --kill all; \
+        rm -rf "$GNUPGHOME"; \
     fi; \
     \
     apk del .fetch-deps \
@@ -169,13 +180,19 @@ RUN set -x \
         LDFLAGS="$PHP_LDFLAGS" \
     && docker-php-source extract \
     && cd /usr/src/php \
-	&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
+    && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
     && ./configure \
         --build="$gnuArch" \
         --with-config-file-path="$PHP_INI_DIR" \
         --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
         \
         --disable-cgi \
+        \
+# make sure invalid --configure-flags are fatal errors intead of just warnings
+        --enable-option-checking=fatal \
+        \
+# https://github.com/docker-library/php/issues/439
+        --with-mhash \
         \
 # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
         --enable-ftp \
@@ -184,7 +201,7 @@ RUN set -x \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
         --enable-mysqlnd \
 # https://wiki.php.net/rfc/libsodium
-	--with-sodium=shared \
+        --with-sodium=shared \
         \
         --with-curl \
         --with-libedit \
@@ -248,8 +265,8 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole-2.1.1 xdebug \
-    && docker-php-ext-enable redis yac yaf swoole sodium \
+    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole-2.1.1 xdebug imagick \
+    && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/opcache.a \
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/sodium.a \
@@ -280,12 +297,12 @@ RUN set -x \
     && cd /tmp \
     && curl -fSkL --retry 5 https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && curl -fSkL --retry 5 https://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
-    && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} \
+    && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
@@ -316,7 +333,7 @@ RUN set -x \
     && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
-ENV PATH=$PATH:/usr/local/openresty/luajit/bin/:/usr/local/openresty/nginx/sbin/:/usr/local/openresty/bin/
+ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
