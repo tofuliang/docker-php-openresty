@@ -68,6 +68,7 @@ ARG PHPIZE_DEPS="\
         gcc \
         libc-dev \
         make \
+        libtool \
         pkgconf \
         re2c \
         curl-dev \
