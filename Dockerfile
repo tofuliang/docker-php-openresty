@@ -170,7 +170,7 @@ RUN set -x \
             gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
         done; \
         gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-	command -v gpgconf > /dev/null && gpgconf --kill all; \
+        command -v gpgconf > /dev/null && gpgconf --kill all; \
         rm -rf "$GNUPGHOME"; \
     fi; \
     \
@@ -210,8 +210,8 @@ RUN set -x \
         \
 # bundled pcre does not support JIT on s390x
 # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
-		$(test "$gnuArch" = 's390x-linux-gnu' && echo '--without-pcre-jit') \
-		\
+        $(test "$gnuArch" = 's390x-linux-gnu' && echo '--without-pcre-jit') \
+        \
         $PHP_EXTRA_CONFIGURE_ARGS \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make install \
@@ -259,18 +259,18 @@ RUN set -x \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.5 -o /usr/src/tideways-4.1.5.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.5.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-4.1.5 \
+    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.6 -o /usr/src/tideways-4.1.6.tar.gz \
+    && tar xzf /usr/src/tideways-4.1.6.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-4.1.6 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole-2.1.1 xdebug imagick \
+    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/opcache.a \
     && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/sodium.a \
-    && echo 'zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20170718/opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip /usr/local/lib/php/extensions/no-debug-non-zts-20170718/* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
