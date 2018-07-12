@@ -55,10 +55,10 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.10.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.10.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="2b8efa771a2ead0bb3ae67b530ca505b5b286adc873cca9ce97a6e1d6815c50b"
-ARG PHP_MD5="de80c2f119d2b864c65f114ba3e438f1"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.19.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.19.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="7cab88f269b90a8a38dbcccf3ec0d5c6eba86122431a53eaa94405bbb60370a8"
+ARG PHP_MD5="7e6440ddcc6579b96e8a04737d31f1f6"
 
 # persistent / runtime deps
 ARG PHPIZE_DEPS="\
@@ -75,6 +75,7 @@ ARG PHPIZE_DEPS="\
         libxml2-dev \
         openssl-dev \
         sqlite-dev \
+        imagemagick-dev \
         "
 
 ARG PHP_DEPS="\
@@ -82,6 +83,7 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
+        imagemagick \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
@@ -138,7 +140,7 @@ RUN set -x \
     mkdir -p /usr/src; \
     cd /usr/src; \
     \
-    wget -O php.tar.xz "$PHP_URL"; \
+    curl -fSkL --retry 5  -o php.tar.xz "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
         echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
@@ -190,6 +192,7 @@ RUN set -x \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
     && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
     && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' $PHP_INI_DIR/php.ini \
     && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
@@ -222,23 +225,23 @@ RUN set -x \
     && patch -p1 -i musl-fixes.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.0.3.tgz -o /usr/src/memcached-3.0.3.tgz \
-    && tar xzf /usr/src/memcached-3.0.3.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.0.3 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.0.4.tgz -o /usr/src/memcached-3.0.4.tgz \
+    && tar xzf /usr/src/memcached-3.0.4.tgz -C /usr/src \
+    && cd /usr/src/memcached-3.0.4 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.2 -o /usr/src/tideways-4.1.2.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.2.tar.gz -C /usr/src \
-    && cd /usr/src/php-profiler-extension-4.1.2 \
+    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.6 -o /usr/src/tideways-4.1.6.tar.gz \
+    && tar xzf /usr/src/tideways-4.1.6.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-4.1.6 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.5 swoole-2.0.9 xdebug \
-    && docker-php-ext-enable redis yac yaf swoole \
+    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
+    && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20151012/opcache.a \
-    && echo 'zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20160303/opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20160303/opcache.a \
+    && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip /usr/local/lib/php/extensions/no-debug-non-zts-20160303/* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
@@ -265,7 +268,7 @@ RUN set -x \
     && cd /tmp \
     && curl -fSkL --retry 5 https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && curl -fSkL --retry 5 https://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
@@ -301,7 +304,7 @@ RUN set -x \
     && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
-ENV PATH=$PATH:/usr/local/openresty/luajit/bin/:/usr/local/openresty/nginx/sbin/:/usr/local/openresty/bin/
+ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
