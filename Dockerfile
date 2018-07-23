@@ -99,6 +99,7 @@ ARG PHP_DEPS="\
         libressl \
         imagemagick \
         graphviz \
+        ttf-freefont \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
