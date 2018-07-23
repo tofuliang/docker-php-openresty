@@ -85,6 +85,7 @@ ARG PHP_DEPS="\
         tar \
         xz \
         imagemagick \
+        graphviz \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
