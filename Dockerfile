@@ -98,6 +98,7 @@ ARG PHP_DEPS="\
 # https://github.com/docker-library/php/issues/494
         libressl \
         imagemagick \
+        graphviz \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
