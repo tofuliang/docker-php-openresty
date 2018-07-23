@@ -86,6 +86,7 @@ ARG PHP_DEPS="\
         xz \
         imagemagick \
         graphviz \
+        ttf-freefont \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
