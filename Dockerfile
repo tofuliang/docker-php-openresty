@@ -344,6 +344,7 @@ ADD etc/supervisor /etc/supervisor
 ADD etc/php/conf.d /usr/local/etc/php/conf.d/
 ADD etc/php/php-fpm.d /usr/local/etc/php-fpm.d/
 ADD daemon /usr/local/bin/daemon
+ADD logrotate /usr/local/bin/logrotate
 
 # Expose ports
 # SSH
