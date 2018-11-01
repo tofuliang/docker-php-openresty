@@ -1,15 +1,14 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
-
-FROM alpine:3.6
+# https://github.com/docker-library/php
+FROM alpine:3.8
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.11.2.5"
-ARG RESTY_LUAROCKS_VERSION="2.3.0"
-ARG RESTY_OPENSSL_VERSION="1.0.2k"
-ARG RESTY_PCRE_VERSION="8.40"
+ARG RESTY_VERSION="1.13.6.2"
+ARG RESTY_OPENSSL_VERSION="1.0.2p"
+ARG RESTY_PCRE_VERSION="8.42"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
     --with-http_addition_module \
@@ -40,6 +39,15 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream_ssl_module \
     --with-threads \
     "
+ARG RESTY_CONFIG_OPTIONS_MORE=""
+
+LABEL resty_version="${RESTY_VERSION}"
+LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
+LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
+LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
+LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
+
+# These are not intended to be user-specified
 ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION}"
 
 ARG PHP_INI_DIR="/usr/local/etc"
@@ -49,33 +57,35 @@ ARG PHP_INI_DIR="/usr/local/etc"
 # Enable linker optimization (this sorts the hash buckets to improve cache locality, and is non-default)
 # Adds GNU HASH segments to generated executables (this is used if present, and is much faster than sysv hash; in this configuration, sysv hash is also generated)
 # https://github.com/docker-library/php/issues/272
+ARG PHP_EXTRA_CONFIGURE_ARGS="--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data"
 ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.21.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.21.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="d4da6dc69d3fe1e6b2b80f16b262f391037bfeb21213c966e026bd45d7ca2813"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.23.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.23.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="227a3c76133c3dc1cec937989456cbd89ed00e68e7260c651900dbe1f5b798bc"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
 ARG PHPIZE_DEPS="\
         autoconf \
+        dpkg-dev dpkg \
         file \
         g++ \
         gcc \
         libc-dev \
         make \
-        libtool \
         pkgconf \
         re2c \
         curl-dev \
         libedit-dev \
         libxml2-dev \
-        openssl-dev \
         sqlite-dev \
+        coreutils \
+        libressl-dev \
         imagemagick-dev \
         "
 
@@ -84,6 +94,8 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
+# https://github.com/docker-library/php/issues/494
+        libressl \
         imagemagick \
         graphviz \
         ttf-freefont \
@@ -135,7 +147,7 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    && apk add --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/testing \
+    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/testing \
             gnu-libiconv \
     ; \
     \
@@ -159,7 +171,8 @@ RUN set -x \
             gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
         done; \
         gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-        rm -r "$GNUPGHOME"; \
+        command -v gpgconf > /dev/null && gpgconf --kill all; \
+        rm -rf "$GNUPGHOME"; \
     fi; \
     \
     apk del .fetch-deps \
@@ -168,24 +181,34 @@ RUN set -x \
         LDFLAGS="$PHP_LDFLAGS" \
     && docker-php-source extract \
     && cd /usr/src/php \
+    && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
     && ./configure \
+        --build="$gnuArch" \
         --with-config-file-path="$PHP_INI_DIR" \
         --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
         \
         --disable-cgi \
         \
+# make sure invalid --configure-flags are fatal errors intead of just warnings
+        --enable-option-checking=fatal \
+        \
+# https://github.com/docker-library/php/issues/439
+    --with-mhash \
 # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
         --enable-ftp \
 # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
         --enable-mbstring \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
         --enable-mysqlnd \
-        --enable-fpm \
         \
         --with-curl \
         --with-libedit \
         --with-openssl \
         --with-zlib \
+        \
+# bundled pcre does not support JIT on s390x
+# https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
+        $(test "$gnuArch" = 's390x-linux-gnu' && echo '--without-pcre-jit') \
         \
         $PHP_EXTRA_CONFIGURE_ARGS \
     && make -j`grep -c ^processor /proc/cpuinfo` \
@@ -209,11 +232,10 @@ RUN set -x \
     && docker-php-source delete \
     \
     && runDeps="$( \
-        scanelf --needed --nobanner --recursive /usr/local \
-            | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
+            | tr ',' '\n' \
             | sort -u \
-            | xargs -r apk info --installed \
-            | sort -u \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
@@ -250,11 +272,10 @@ RUN set -x \
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
     && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
     && phpExtrunDeps="$( \
-        scanelf --needed --nobanner --recursive /usr/local \
-            | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
+            | tr ',' '\n' \
             | sort -u \
-            | xargs -r apk info --installed \
-            | sort -u \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
 #==============PHP-END==============
     \
@@ -276,7 +297,7 @@ RUN set -x \
     && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
-    && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} \
+    && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
@@ -294,7 +315,7 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
-    && apk add --no-cache supervisor openssh \
+    && apk add --no-cache supervisor openssh logrotate \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
