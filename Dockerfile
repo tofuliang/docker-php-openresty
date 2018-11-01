@@ -1,13 +1,13 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
-
-FROM alpine:3.7
+# https://github.com/docker-library/php
+FROM alpine:3.8
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
 ARG RESTY_VERSION="1.13.6.2"
-ARG RESTY_OPENSSL_VERSION="1.0.2k"
+ARG RESTY_OPENSSL_VERSION="1.0.2p"
 ARG RESTY_PCRE_VERSION="8.42"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.9.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.9.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="3585c1222e00494efee4f5a65a8e03a1e6eca3dfb834814236ee7f02c5248ae0"
+ARG PHP_URL="https://secure.php.net/get/php-7.2.11.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.11.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="da1a705c0bc46410e330fc6baa967666c8cd2985378fb9707c01a8e33b01d985"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -80,6 +80,7 @@ ARG PHPIZE_DEPS="\
         make \
         pkgconf \
         re2c \
+        argon2-dev \
         curl-dev \
         libedit-dev \
         libxml2-dev \
@@ -148,7 +149,7 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    && apk add --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/testing \
+    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/testing \
             gnu-libiconv \
     ; \
     \
@@ -202,6 +203,8 @@ RUN set -x \
         --enable-mbstring \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
         --enable-mysqlnd \
+# https://wiki.php.net/rfc/argon2_password_hash (7.2+)
+        --with-password-argon2 \
 # https://wiki.php.net/rfc/libsodium
         --with-sodium=shared \
         \
@@ -236,11 +239,10 @@ RUN set -x \
     && docker-php-source delete \
     \
     && runDeps="$( \
-        scanelf --needed --nobanner --recursive /usr/local \
-            | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
+            | tr ',' '\n' \
             | sort -u \
-            | xargs -r apk info --installed \
-            | sort -u \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
@@ -278,11 +280,10 @@ RUN set -x \
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
     && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
     && phpExtrunDeps="$( \
-        scanelf --needed --nobanner --recursive /usr/local \
-            | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
+            | tr ',' '\n' \
             | sort -u \
-            | xargs -r apk info --installed \
-            | sort -u \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
 #==============PHP-END==============
     \
@@ -322,7 +323,7 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
-    && apk add --no-cache supervisor openssh \
+    && apk add --no-cache supervisor openssh logrotate \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
