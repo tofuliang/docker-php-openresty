@@ -89,6 +89,7 @@ ARG PHPIZE_DEPS="\
         libressl-dev \
         libsodium-dev \
         imagemagick-dev \
+        icu-dev \
         "
 
 ARG PHP_DEPS="\
