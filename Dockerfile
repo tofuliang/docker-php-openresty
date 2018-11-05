@@ -248,7 +248,7 @@ RUN set -x \
 # 配置GD库,开启更多图片支持
     && docker-php-ext-configure gd --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
 # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
 # 从源码编译安装支持sasl的libmemcached
     && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
     && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
@@ -323,7 +323,7 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
-    && apk add --no-cache supervisor openssh logrotate \
+    && apk add --no-cache supervisor openssh logrotate sudo \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
