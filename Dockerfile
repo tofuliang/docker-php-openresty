@@ -90,6 +90,7 @@ ARG PHPIZE_DEPS="\
         libsodium-dev \
         imagemagick-dev \
         icu-dev \
+        libzip-dev \
         "
 
 ARG PHP_DEPS="\
@@ -102,6 +103,7 @@ ARG PHP_DEPS="\
         imagemagick \
         graphviz \
         ttf-freefont \
+        libzip \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
