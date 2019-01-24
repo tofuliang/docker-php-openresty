@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.11.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.11.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="da1a705c0bc46410e330fc6baa967666c8cd2985378fb9707c01a8e33b01d985"
+ARG PHP_URL="https://secure.php.net/get/php-7.2.14.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.14.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="ee3f1cc102b073578a3c53ba4420a76da3d9f0c981c02b1664ae741ca65af84f"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -226,7 +226,6 @@ RUN set -x \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
     && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
     && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' $PHP_INI_DIR/php.ini \
     && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
