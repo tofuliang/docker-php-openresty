@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.14.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.14.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="ee3f1cc102b073578a3c53ba4420a76da3d9f0c981c02b1664ae741ca65af84f"
+ARG PHP_URL="https://secure.php.net/get/php-7.3.1.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.1.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="cfe93e40be0350cd53c4a579f52fe5d8faf9c6db047f650a4566a2276bf33362"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -171,7 +171,7 @@ RUN set -x \
         wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
         export GNUPGHOME="$(mktemp -d)"; \
         for key in $GPG_KEYS; do \
-            gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+            gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
         done; \
         gpg --batch --verify php.tar.xz.asc php.tar.xz; \
         command -v gpgconf > /dev/null && gpgconf --kill all; \
