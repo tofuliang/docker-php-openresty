@@ -257,25 +257,25 @@ RUN set -x \
     && patch -p1 -i musl-fixes.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.0.4.tgz -o /usr/src/memcached-3.0.4.tgz \
-    && tar xzf /usr/src/memcached-3.0.4.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.0.4 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.3.tgz -o /usr/src/memcached-3.1.3.tgz \
+    && tar xzf /usr/src/memcached-3.1.3.tgz -C /usr/src \
+    && cd /usr/src/memcached-3.1.3 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.6 -o /usr/src/tideways-4.1.6.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.6.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-4.1.6 \
+    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.7 -o /usr/src/tideways-4.1.7.tar.gz \
+    && tar xzf /usr/src/tideways-4.1.7.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-4.1.7 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/opcache.a \
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/sodium.a \
+    && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
+    && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/sodium.a" \
     && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && strip /usr/local/lib/php/extensions/no-debug-non-zts-20170718/* \
+    && strip "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
     && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
@@ -355,4 +355,3 @@ EXPOSE 443
 EXPOSE 9001
 
 CMD ["/usr/local/bin/daemon"]
-
