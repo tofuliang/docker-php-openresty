@@ -323,6 +323,9 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
+    && rm -fr /tmp/* \
+    && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
+    && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
     && apk add --no-cache supervisor openssh logrotate sudo \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
