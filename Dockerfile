@@ -326,7 +326,7 @@ RUN set -x \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
     && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache supervisor openssh logrotate sudo \
+    && apk add --no-cache supervisor openssh logrotate sudo tzdata \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
