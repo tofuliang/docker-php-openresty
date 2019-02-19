@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.1.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.1.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="cfe93e40be0350cd53c4a579f52fe5d8faf9c6db047f650a4566a2276bf33362"
+ARG PHP_URL="https://secure.php.net/get/php-5.5.38.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.5.38.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="cb527c44b48343c8557fe2446464ff1d4695155a95601083e5d1f175df95580f"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -80,17 +80,14 @@ ARG PHPIZE_DEPS="\
         make \
         pkgconf \
         re2c \
-        argon2-dev \
         curl-dev \
         libedit-dev \
         libxml2-dev \
         sqlite-dev \
         coreutils \
         libressl-dev \
-        libsodium-dev \
         imagemagick-dev \
         icu-dev \
-        libzip-dev \
         "
 
 ARG PHP_DEPS="\
@@ -103,7 +100,6 @@ ARG PHP_DEPS="\
         imagemagick \
         graphviz \
         ttf-freefont \
-        libzip \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
@@ -206,10 +202,6 @@ RUN set -x \
         --enable-mbstring \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
         --enable-mysqlnd \
-# https://wiki.php.net/rfc/argon2_password_hash (7.2+)
-        --with-password-argon2 \
-# https://wiki.php.net/rfc/libsodium
-        --with-sodium=shared \
         \
         --with-curl \
         --with-libedit \
@@ -227,15 +219,8 @@ RUN set -x \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
     && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
-    && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
-    && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/group = nobody/group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/;listen.owner = nobody/listen.owner = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/;listen.group = www-data/listen.group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
     && docker-php-source delete \
@@ -246,11 +231,11 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
-    && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
+    && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
-    && docker-php-ext-configure gd --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
+    && docker-php-ext-configure gd --enable-gd-native-ttf --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
 # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mcrypt mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
 # 从源码编译安装支持sasl的libmemcached
     && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
     && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
@@ -259,9 +244,9 @@ RUN set -x \
     && patch -p1 -i musl-fixes.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.0.4.tgz -o /usr/src/memcached-3.0.4.tgz \
-    && tar xzf /usr/src/memcached-3.0.4.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.0.4 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-2.2.0.tgz -o /usr/src/memcached-2.2.0.tgz \
+    && tar xzf /usr/src/memcached-2.2.0.tgz -C /usr/src \
+    && cd /usr/src/memcached-2.2.0 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
@@ -271,13 +256,19 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
-    && docker-php-ext-enable redis yac yaf swoole sodium imagick \
+    && pecl install redis swoole-1.10.5 xdebug-2.5.5 imagick \
+    && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
+    && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
+    && cd /usr/src/yac-0.9.2 \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && tar xzf /usr/src/yaf-2.3.5.tgz -C /usr/src \
+    && cd /usr/src/yaf-2.3.5 \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/opcache.a \
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20170718/sodium.a \
-    && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && strip /usr/local/lib/php/extensions/no-debug-non-zts-20170718/* \
+    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
+    && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
     && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
@@ -357,4 +348,3 @@ EXPOSE 443
 EXPOSE 9001
 
 CMD ["/usr/local/bin/daemon"]
-
