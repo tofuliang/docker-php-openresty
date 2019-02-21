@@ -218,9 +218,18 @@ RUN set -x \
     && cp /usr/src/php/php.ini-development $PHP_INI_DIR/php.ini-development \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
-    && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
-    && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
+    && head -8 $PHP_INI_DIR/php-fpm.conf.default > $PHP_INI_DIR/php-fpm.conf \
+    && sed -n '17,126p' $PHP_INI_DIR/php-fpm.conf.default >> $PHP_INI_DIR/php-fpm.conf \
+    && sed -n '9,16p' $PHP_INI_DIR/php-fpm.conf.default >> $PHP_INI_DIR/php-fpm.conf \
+    && sed -n '127,999p' $PHP_INI_DIR/php-fpm.conf.default > $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/;include=etc\/fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
+    && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/group = nobody/group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/;listen.owner = www-data/listen.owner = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/;listen.group = www-data/listen.group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
     && docker-php-source delete \
