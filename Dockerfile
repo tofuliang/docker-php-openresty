@@ -221,6 +221,7 @@ RUN set -x \
     && head -8 $PHP_INI_DIR/php-fpm.conf.default > $PHP_INI_DIR/php-fpm.conf \
     && sed -n '17,126p' $PHP_INI_DIR/php-fpm.conf.default >> $PHP_INI_DIR/php-fpm.conf \
     && sed -n '9,16p' $PHP_INI_DIR/php-fpm.conf.default >> $PHP_INI_DIR/php-fpm.conf \
+    && [ ! -d $PHP_INI_DIR/php-fpm.d ] && mkdir -p $PHP_INI_DIR/php-fpm.d \
     && sed -n '127,999p' $PHP_INI_DIR/php-fpm.conf.default > $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;include=etc\/fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
