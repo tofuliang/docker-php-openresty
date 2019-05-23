@@ -272,11 +272,11 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis \
-#与php7.3不兼容    yac-2.0.2  yaf-3.0.7 xdebug \
+    && pecl install redis yaf-3.0.8 xdebug \
+#与php7.3不兼容    yac-2.0.2 \
     swoole imagick \
-    && docker-php-ext-enable redis swoole sodium imagick \
-#与php7.3不兼容    yac yaf \
+    && docker-php-ext-enable redis swoole sodium imagick yaf \
+#与php7.3不兼容    yac \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/sodium.a" \
