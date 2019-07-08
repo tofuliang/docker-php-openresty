@@ -1,13 +1,13 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.8
+FROM alpine:3.9
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.13.6.2"
-ARG RESTY_OPENSSL_VERSION="1.0.2p"
+ARG RESTY_VERSION="1.15.8.1"
+ARG RESTY_OPENSSL_VERSION="1.1.1c"
 ARG RESTY_PCRE_VERSION="8.42"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
@@ -41,12 +41,22 @@ ARG RESTY_CONFIG_OPTIONS="\
     --add-module=/tmp/nginx-dav-ext-module-3.0.0/ \
     "
 ARG RESTY_CONFIG_OPTIONS_MORE=""
+ARG RESTY_ADD_PACKAGE_BUILDDEPS=""
+ARG RESTY_ADD_PACKAGE_RUNDEPS=""
+ARG RESTY_EVAL_PRE_CONFIGURE=""
+ARG RESTY_EVAL_POST_MAKE=""
 
+LABEL resty_image_base="${RESTY_IMAGE_BASE}"
+LABEL resty_image_tag="${RESTY_IMAGE_TAG}"
 LABEL resty_version="${RESTY_VERSION}"
 LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
 LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
 LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
 LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
+LABEL resty_add_package_builddeps="${RESTY_ADD_PACKAGE_BUILDDEPS}"
+LABEL resty_add_package_rundeps="${RESTY_ADD_PACKAGE_RUNDEPS}"
+LABEL resty_eval_pre_configure="${RESTY_EVAL_PRE_CONFIGURE}"
+LABEL resty_eval_post_make="${RESTY_EVAL_POST_MAKE}"
 
 # These are not intended to be user-specified
 ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION}"
@@ -65,9 +75,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.5.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.5.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="e1011838a46fd4a195c8453b333916622d7ff5bce4aca2d9d99afac142db2472"
+ARG PHP_URL="https://secure.php.net/get/php-7.3.7.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.7.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="ba067200ba649956b3a92ec8b71a6ed8ce8a099921212443c1bcf3260a29274c"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -129,6 +139,7 @@ ARG OPENRESTY_DEPS="\
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
+COPY fix_gcc8.patch /tmp/fix_gcc8.patch
 COPY docker-php-source /usr/local/bin/
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
 
@@ -256,8 +267,10 @@ RUN set -x \
     && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
     && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
     && mv /tmp/musl-fixes.patch /usr/src/libmemcached-1.0.18/musl-fixes.patch \
+    && mv /tmp/fix_gcc8.patch /usr/src/libmemcached-1.0.18/fix_gcc8.patch \
     && cd /usr/src/libmemcached-1.0.18 \
     && patch -p1 -i musl-fixes.patch \
+    && patch -p1 -i fix_gcc8.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
     && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.3.tgz -o /usr/src/memcached-3.1.3.tgz \
@@ -305,6 +318,7 @@ RUN set -x \
         LDFLAGS="" \
     && cd /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
+    && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
     && curl -fSkL --retry 5 https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
@@ -312,10 +326,18 @@ RUN set -x \
     && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
+    && if [[ "1.1.1" == $(echo -e "${RESTY_OPENSSL_VERSION}\n1.1.1" | sort -V | head -n1) ]] ; then \
+        echo 'patching Nginx for OpenSSL 1.1.1' \
+        && cd bundle/nginx-1.15.8 \
+        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/nginx-1.15.8-ssl_cert_cb_yield.patch | patch -p1 \
+        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/nginx-1.15.8-ssl_sess_cb_yield.patch | patch -p1 \
+        && cd ../.. ; \
+    fi \
     && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
+    && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
     && rm -rf \
         openssl-${RESTY_OPENSSL_VERSION} \
         openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
