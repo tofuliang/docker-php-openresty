@@ -166,7 +166,7 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/testing \
+    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/community \
             gnu-libiconv \
     ; \
     \
