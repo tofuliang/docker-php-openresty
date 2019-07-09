@@ -9,7 +9,7 @@ MAINTAINER tofuiang <tofuliang@gmail.com>
 ARG RESTY_VERSION="1.15.8.1"
 ARG RESTY_OPENSSL_VERSION="1.1.1c"
 ARG RESTY_PCRE_VERSION="8.42"
-ARG vRESTY_CONFIG_OPTIONS="\
+ARG RESTY_CONFIG_OPTIONS="\
     --with-file-aio \
     --with-http_addition_module \
     --with-http_auth_request_module \
