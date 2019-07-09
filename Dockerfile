@@ -9,7 +9,7 @@ MAINTAINER tofuiang <tofuliang@gmail.com>
 ARG RESTY_VERSION="1.15.8.1"
 ARG RESTY_OPENSSL_VERSION="1.1.1c"
 ARG RESTY_PCRE_VERSION="8.42"
-ARG RESTY_CONFIG_OPTIONS="\
+ARG vRESTY_CONFIG_OPTIONS="\
     --with-file-aio \
     --with-http_addition_module \
     --with-http_auth_request_module \
@@ -29,14 +29,16 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-http_sub_module \
     --with-http_v2_module \
     --with-http_xslt_module=dynamic \
-    --with-ipv6 \
+    --with-http_iconv_module \
     --with-mail \
     --with-mail_ssl_module \
-    --with-md5-asm \
     --with-pcre-jit \
-    --with-sha1-asm \
+    --with-http_degradation_module \
     --with-stream \
     --with-stream_ssl_module \
+    --with-stream_realip_module \
+    --with-stream_geoip_module \
+    --with-stream_ssl_preread_module \
     --with-threads \
     --add-module=/tmp/nginx-dav-ext-module-3.0.0/ \
     "
@@ -313,9 +315,9 @@ RUN set -x \
 # 2) Download and untar OpenSSL, PCRE, and OpenResty
 # 3) Build OpenResty
 # 4) Cleanup
-    && export CFLAGS="" \
-        CPPFLAGS="" \
-        LDFLAGS="" \
+    && unset CFLAGS \
+    && unset CPPFLAGS \
+    && unset LDFLAGS \
     && cd /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
