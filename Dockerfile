@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.14.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.14.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="ee3f1cc102b073578a3c53ba4420a76da3d9f0c981c02b1664ae741ca65af84f"
+ARG PHP_URL="https://secure.php.net/get/php-7.2.22.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.22.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="eb597fcf8dc0a6211a42a6346de4f63ee166829a6df6d8ed767fe14be8d1c3a3"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -263,13 +263,13 @@ RUN set -x \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.7 -o /usr/src/tideways-4.1.7.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.7.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-4.1.7 \
+    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.0.tar.gz -o /usr/src/tideways-5.0.0.tar.gz \
+    && tar xzf /usr/src/tideways-5.0.0.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-5.0.0 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable tideways \
+    && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
+    && pecl install redis yac-2.0.2 yaf-3.0.8 swoole xdebug imagick \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
@@ -358,3 +358,4 @@ EXPOSE 443
 EXPOSE 9001
 
 CMD ["/usr/local/bin/daemon"]
+
