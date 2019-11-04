@@ -234,6 +234,7 @@ RUN set -x \
     && sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
+    && cd /tmp \
     && docker-php-source delete \
     \
     && runDeps="$( \
@@ -267,7 +268,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.5.5 imagick ZendOpcache \
+    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.4.1 imagick ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -277,11 +278,7 @@ RUN set -x \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
-    && mv /tmp/mssql.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
-    && mv /tmp/pdo_dblib.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
-    && echo 'extension=mssql.so' > /usr/local/etc/php/conf.d/docker-php-ext-mssql.ini \
-    && echo 'extension=pdo_dblib.so' > /usr/local/etc/php/conf.d/docker-php-ext-pdo_dblib.ini \
-    && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
 # 删除源码文件
     && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
@@ -292,6 +289,10 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
+    && mv /tmp/mssql.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
+    && mv /tmp/pdo_dblib.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
+    && echo 'extension=mssql.so' > /usr/local/etc/php/conf.d/docker-php-ext-mssql.ini \
+    && echo 'extension=pdo_dblib.so' > /usr/local/etc/php/conf.d/docker-php-ext-pdo_dblib.ini \
 #==============PHP-END==============
     \
 #==============OPENRESTY-START==============
