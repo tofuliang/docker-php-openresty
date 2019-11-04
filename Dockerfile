@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.8
+FROM alpine:3.7
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -64,9 +64,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-5.5.38.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.5.38.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="cb527c44b48343c8557fe2446464ff1d4695155a95601083e5d1f175df95580f"
+ARG PHP_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.4.45.tar.bz2.asc/from/this/mirror"
+ARG PHP_SHA256="4e0d28b1554c95cfaea6fa2b64aac85433f158ce72bb571bcd5574f98f4c6582"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -85,7 +85,7 @@ ARG PHPIZE_DEPS="\
         libxml2-dev \
         sqlite-dev \
         coreutils \
-        libressl-dev \
+        openssl-dev \
         imagemagick-dev \
         icu-dev \
         "
@@ -94,12 +94,12 @@ ARG PHP_DEPS="\
         ca-certificates \
         curl \
         tar \
-        xz \
-# https://github.com/docker-library/php/issues/494
-        libressl \
+        openssl \
         imagemagick \
         graphviz \
         ttf-freefont \
+        unixodbc \
+        freetds \
         "
 
 ARG OPENRESTY_BUILD_DEPS="\
@@ -124,6 +124,8 @@ ARG OPENRESTY_DEPS="\
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
+COPY mssql.so /tmp/mssql.so
+COPY pdo_dblib.so /tmp/pdo_dblib.so
 COPY docker-php-source /usr/local/bin/
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
 
@@ -156,22 +158,22 @@ RUN set -x \
     mkdir -p /usr/src; \
     cd /usr/src; \
     \
-    wget -O php.tar.xz "$PHP_URL"; \
+    wget -O php.tar.bz2 "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
-        echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
+        echo "$PHP_SHA256 *php.tar.bz2" | sha256sum -c -; \
     fi; \
     if [ -n "$PHP_MD5" ]; then \
-        echo "$PHP_MD5 *php.tar.xz" | md5sum -c -; \
+        echo "$PHP_MD5 *php.tar.bz2" | md5sum -c -; \
     fi; \
     \
     if [ -n "$PHP_ASC_URL" ]; then \
-        wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
+        wget -O php.tar.bz2.asc "$PHP_ASC_URL"; \
         export GNUPGHOME="$(mktemp -d)"; \
         for key in $GPG_KEYS; do \
             gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
         done; \
-        gpg --batch --verify php.tar.xz.asc php.tar.xz; \
+        gpg --batch --verify php.tar.bz2.asc php.tar.bz2; \
         command -v gpgconf > /dev/null && gpgconf --kill all; \
         rm -rf "$GNUPGHOME"; \
     fi; \
@@ -184,7 +186,6 @@ RUN set -x \
     && cd /usr/src/php \
     && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
     && ./configure \
-        --build="$gnuArch" \
         --with-config-file-path="$PHP_INI_DIR" \
         --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
         \
@@ -266,7 +267,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis swoole-1.10.5 xdebug-2.5.5 imagick \
+    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.5.5 imagick ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -276,7 +277,10 @@ RUN set -x \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
-    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
+    && mv /tmp/mssql.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
+    && mv /tmp/pdo_dblib.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
+    && echo 'extension=mssql.so' > /usr/local/etc/php/conf.d/docker-php-ext-mssql.ini \
+    && echo 'extension=pdo_dblib.so' > /usr/local/etc/php/conf.d/docker-php-ext-pdo_dblib.ini \
     && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
 # 删除源码文件
