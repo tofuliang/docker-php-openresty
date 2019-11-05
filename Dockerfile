@@ -244,9 +244,9 @@ RUN set -x \
     && mkdir -p /usr/local/var/log/nginx/ \
     && chown www-data:www-data -R /usr/local/var/log \
 # SSH
-    && { mkdir /var/run/sshd || true; } \
-    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
-    && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
+#    && { mkdir /var/run/sshd || true; } \
+#    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
+#    && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
 #ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
