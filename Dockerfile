@@ -6,49 +6,6 @@ FROM alpine:3.8
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.13.6.2"
-ARG RESTY_OPENSSL_VERSION="1.0.2p"
-ARG RESTY_PCRE_VERSION="8.42"
-ARG RESTY_CONFIG_OPTIONS="\
-    --with-file-aio \
-    --with-http_addition_module \
-    --with-http_auth_request_module \
-    --with-http_dav_module \
-    --with-http_flv_module \
-    --with-http_geoip_module=dynamic \
-    --with-http_gunzip_module \
-    --with-http_gzip_static_module \
-    --with-http_image_filter_module=dynamic \
-    --with-http_mp4_module \
-    --with-http_random_index_module \
-    --with-http_realip_module \
-    --with-http_secure_link_module \
-    --with-http_slice_module \
-    --with-http_ssl_module \
-    --with-http_stub_status_module \
-    --with-http_sub_module \
-    --with-http_v2_module \
-    --with-http_xslt_module=dynamic \
-    --with-ipv6 \
-    --with-mail \
-    --with-mail_ssl_module \
-    --with-md5-asm \
-    --with-pcre-jit \
-    --with-sha1-asm \
-    --with-stream \
-    --with-stream_ssl_module \
-    --with-threads \
-    "
-ARG RESTY_CONFIG_OPTIONS_MORE=""
-
-LABEL resty_version="${RESTY_VERSION}"
-LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
-LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
-LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
-LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
-
-# These are not intended to be user-specified
-ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION}"
 
 ARG PHP_INI_DIR="/usr/local/etc"
 # Apply stack smash protection to functions using local buffers and alloca()
@@ -64,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.23.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.23.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="227a3c76133c3dc1cec937989456cbd89ed00e68e7260c651900dbe1f5b798bc"
+ARG PHP_URL="https://secure.php.net/get/php-7.1.33.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="657cf6464bac28e9490c59c07a2cf7bb76c200f09cfadf6e44ea64e95fa01021"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -102,27 +59,6 @@ ARG PHP_DEPS="\
         ttf-freefont \
         "
 
-ARG OPENRESTY_BUILD_DEPS="\
-        build-base \
-        gd-dev \
-        geoip-dev \
-        libxslt-dev \
-        linux-headers \
-        make \
-        perl-dev \
-        readline-dev \
-        zlib-dev \
-        "
-
-ARG OPENRESTY_DEPS="\
-        curl \
-        gd \
-        geoip \
-        libgcc \
-        libxslt \
-        zlib \
-        "
-
 COPY musl-fixes.patch /tmp/musl-fixes.patch
 COPY docker-php-source /usr/local/bin/
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
@@ -143,13 +79,12 @@ RUN set -x \
         $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
-        $OPENRESTY_DEPS \
     \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/testing \
-            gnu-libiconv \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+           gnu-libiconv \
     ; \
     \
 #==============PHP-START==============
@@ -194,7 +129,8 @@ RUN set -x \
         --enable-option-checking=fatal \
         \
 # https://github.com/docker-library/php/issues/439
-    --with-mhash \
+        --with-mhash \
+        \
 # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
         --enable-ftp \
 # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
@@ -227,9 +163,10 @@ RUN set -x \
     && sed -i 's/;listen.owner = nobody/listen.owner = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.group = www-data/listen.group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/g' $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
+    && cd /tmp \
     && docker-php-source delete \
     \
     && runDeps="$( \
@@ -263,15 +200,15 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf-3.0.7 swoole xdebug imagick \
+    && pecl install redis yac-2.0.2 yaf swoole xdebug imagick \
     && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
-    && rm -fr /usr/local/lib/php/extensions/no-debug-non-zts-20160303/opcache.a \
-    && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && strip /usr/local/lib/php/extensions/no-debug-non-zts-20160303/* \
+    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
+    && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
+    && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
 # 删除源码文件
-    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
-    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
+#    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
+#    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
     && phpExtrunDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
@@ -280,43 +217,13 @@ RUN set -x \
     )" \
 #==============PHP-END==============
     \
-#==============OPENRESTY-START==============
-    \
-# These are not intended to be user-specified
-# 1) Install apk dependencies
-# 2) Download and untar OpenSSL, PCRE, and OpenResty
-# 3) Build OpenResty
-# 4) Cleanup
-    && export CFLAGS="" \
-        CPPFLAGS="" \
-        LDFLAGS="" \
-    && cd /tmp \
-    && curl -fSkL --retry 5 https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
-    && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
-    && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
-    && tar xzf openresty-${RESTY_VERSION}.tar.gz \
-    && cd /tmp/openresty-${RESTY_VERSION} \
-    && ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} \
-    && make -j`grep -c ^processor /proc/cpuinfo` \
-    && make -j`grep -c ^processor /proc/cpuinfo` install \
-    && cd /tmp \
-    && rm -rf \
-        openssl-${RESTY_OPENSSL_VERSION} \
-        openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-        openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
-        pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
-    && { find /usr/local/openresty -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
-    \
-#==============OPENRESTY-END==============
-    \
     && apk del .build-deps \
     && apk del .php-ext-build-deps \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
-    && apk add --no-cache supervisor openssh logrotate sudo \
+    && apk add --no-cache supervisor logrotate sudo \
+#    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
@@ -329,8 +236,7 @@ RUN set -x \
     && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
-ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
-ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
+#ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 ADD etc/supervisor /etc/supervisor
@@ -340,11 +246,10 @@ ADD daemon /usr/local/bin/daemon
 
 # Expose ports
 # SSH
-EXPOSE 22
-# NGINX
-EXPOSE 80
-EXPOSE 443
+#EXPOSE 22
 # Xdebug
-EXPOSE 9001
+#EXPOSE 9001
+# fpm
+EXPOSE 9000
 
 CMD ["/usr/local/bin/daemon"]
