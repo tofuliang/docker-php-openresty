@@ -100,7 +100,7 @@ ARG OPENRESTY_DEPS="\
 
 # ensure www-data user exists
 RUN set -x \
-    && addgroup -g 82 -S www-data \
+    addgroup -g 82 -S www-data \
     && adduser -u 82 -D -S -G www-data www-data \
 # 82 is the standard uid/gid for "www-data" in Alpine
 # https://git.alpinelinux.org/aports/tree/main/apache2/apache2.pre-install?h=3.9-stable
@@ -189,7 +189,7 @@ RUN set -x \
     && mkdir -p /usr/local/var/log/php_errors/ \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
-    && chown www-data:www-data -R /usr/local/var/log \
+    && chown www-data:www-data -R /usr/local/var/log
 # SSH
 #    && { mkdir /var/run/sshd || true; } \
 #    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
