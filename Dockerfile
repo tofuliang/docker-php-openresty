@@ -242,7 +242,7 @@ RUN set -x \
     && mkdir -p /usr/local/var/log/php_errors/ \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
-    && chown www-data:www-data -R /usr/local/var/log \
+    && chown www-data:www-data -R /usr/local/var/log
 # SSH
 #    && { mkdir /var/run/sshd || true; } \
 #    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
