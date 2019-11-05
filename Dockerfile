@@ -203,7 +203,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.4.1 imagick ZendOpcache \
+    && pecl install redis-3.2.12 swoole-1.10.5 xdebug-2.4.1 imagick ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
