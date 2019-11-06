@@ -115,7 +115,7 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    ; \
+    \
 #==============OPENRESTY-START==============
     \
 # These are not intended to be user-specified
