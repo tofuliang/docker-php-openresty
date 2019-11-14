@@ -1,5 +1,4 @@
 # Dockerfile - alpine
-# https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
 FROM alpine:3.8
 
@@ -21,9 +20,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.33.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="657cf6464bac28e9490c59c07a2cf7bb76c200f09cfadf6e44ea64e95fa01021"
+ARG PHP_URL="https://secure.php.net/get/php-7.0.33.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.0.33.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="ab8c5be6e32b1f8d032909dedaaaa4bbb1a209e519abb01a52ce3914f9a13d96"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -45,6 +44,7 @@ ARG PHPIZE_DEPS="\
         libressl-dev \
         imagemagick-dev \
         icu-dev \
+        unixodbc-dev \
         "
 
 ARG PHP_DEPS="\
@@ -57,6 +57,7 @@ ARG PHP_DEPS="\
         imagemagick \
         graphviz \
         ttf-freefont \
+        unixodbc \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
@@ -76,7 +77,6 @@ RUN set -x \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
-        $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
     \
@@ -200,8 +200,8 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf swoole xdebug imagick \
-    && docker-php-ext-enable redis yac yaf swoole imagick \
+    && pecl install redis yac-2.0.2 yaf swoole xdebug imagick pdo_sqlsrv \
+    && docker-php-ext-enable redis yac yaf swoole imagick pdo_sqlsrv \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
     && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
