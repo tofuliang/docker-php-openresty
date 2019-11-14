@@ -42,7 +42,6 @@ ARG PHPIZE_DEPS="\
         sqlite-dev \
         coreutils \
         openssl-dev \
-        imagemagick-dev \
         icu-dev \
         "
 
@@ -51,7 +50,6 @@ ARG PHP_DEPS="\
         curl \
         tar \
         openssl \
-        imagemagick \
         graphviz \
         ttf-freefont \
         unixodbc \
@@ -201,7 +199,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.4.1 imagick ZendOpcache \
+    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.4.1 ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -209,7 +207,7 @@ RUN set -x \
     && tar xzf /usr/src/yaf-2.3.5.tgz -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole imagick \
+    && docker-php-ext-enable redis yac yaf swoole \
 # strip 所有扩展
     && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
