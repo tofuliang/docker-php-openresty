@@ -1,5 +1,4 @@
 # Dockerfile - alpine
-# https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
 FROM alpine:3.8
 
@@ -21,9 +20,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-5.5.38.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.5.38.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="cb527c44b48343c8557fe2446464ff1d4695155a95601083e5d1f175df95580f"
+ARG PHP_URL="https://secure.php.net/get/php-5.6.40.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.6.40.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="1369a51eee3995d7fbd1c5342e5cc917760e276d561595b6052b21ace2656d1c"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -80,7 +79,6 @@ RUN set -x \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
-        $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
     \
