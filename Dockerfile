@@ -20,9 +20,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.4.45.tar.bz2.asc/from/this/mirror"
-ARG PHP_SHA256="4e0d28b1554c95cfaea6fa2b64aac85433f158ce72bb571bcd5574f98f4c6582"
+ARG PHP_URL="https://www.php.net/distributions/php-5.3.29.tar.bz2"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.3.29.tar.bz2.asc/from/this/mirror"
+ARG PHP_SHA256="c4e1cf6972b2a9c7f2777a18497d83bf713cdbecabb65d3ff62ba441aebb0091"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
