@@ -1,7 +1,6 @@
 # Dockerfile - alpine
-# https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.7
+FROM alpine:3.4
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -78,7 +77,6 @@ RUN set -x \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
-        $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
     \
