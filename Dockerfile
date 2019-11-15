@@ -82,7 +82,6 @@ RUN set -x \
     \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
-        openssl \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
            gnu-libiconv \
     ; \
