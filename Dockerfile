@@ -1,6 +1,6 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.8
+FROM alpine:3.7
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
