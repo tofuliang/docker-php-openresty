@@ -42,7 +42,15 @@ ARG PHPIZE_DEPS="\
         sqlite-dev \
         coreutils \
         openssl-dev \
+        openldap-dev \
+        unixodbc-dev \
         icu-dev \
+        gmp-dev \
+        imap-dev \
+        freetds-dev \
+        readline-dev \
+        libxslt-dev \
+        mariadb-dev \
         "
 
 ARG PHP_DEPS="\
@@ -83,6 +91,8 @@ RUN set -x \
         openssl \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
            gnu-libiconv \
+    && apk add --no-cache --virtual .build-tidy-deps  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+           tidyhtml-dev \
     ; \
     \
 #==============PHP-START==============
@@ -115,30 +125,42 @@ RUN set -x \
         LDFLAGS="$PHP_LDFLAGS" \
     && docker-php-source extract \
     && cd /usr/src/php \
+    &&  ln -s /usr/include/tidybuffio.h /usr/include/buffio.h \
     && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
     && ./configure \
         --with-config-file-path="$PHP_INI_DIR" \
         --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
         \
         --disable-cgi \
-        \
-# make sure invalid --configure-flags are fatal errors intead of just warnings
-        --enable-option-checking=fatal \
+        --enable-pcntl=shared \
         \
 # https://github.com/docker-library/php/issues/439
-        --with-mhash \
+        --with-mhash=shared \
         \
 # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
-        --enable-ftp \
+        --enable-ftp=shared \
 # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
         --enable-mbstring \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
-        --enable-mysqlnd \
+        --enable-mysqlnd=shared \
         \
         --with-curl \
-        --with-libedit \
+        --with-libedit=shared \
         --with-openssl \
-        --with-zlib \
+        --with-zlib=shared \
+        --with-xmlrpc=shared \
+        --with-gmp=shared \
+        --with-pdo-dblib=shared \
+        --with-xsl=shared \
+        --enable-wddx=shared \
+        --with-imap=shared \
+        --with-imap-ssl \
+        --with-mssql=shared \
+        --with-ldap=shared \
+        --with-tidy=shared,/usr \
+        --with-mysql=shared \
+        --with-pdo-odbc=shared,unixODBC,/usr,libodbc \
+        --with-unixODBC=shared,/usr \
         \
 # bundled pcre does not support JIT on s390x
 # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
@@ -174,7 +196,7 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
-    && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev cyrus-sasl-dev bzip2-dev mariadb-dev \
+    && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
     && docker-php-ext-configure gd --enable-gd-native-ttf --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
 # 安装常用扩展
@@ -228,6 +250,7 @@ RUN set -x \
     \
     && apk del .build-deps \
     && apk del .php-ext-build-deps \
+    && apk del .build-tidy-deps \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
