@@ -223,10 +223,10 @@ RUN set -x \
 # 使用pecl安装redis扩展
     && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.2.7 ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
-    && tar xzf /usr/src/yac-0.9.2.tgz -C /usr/src \
+    && tar xf /usr/src/yac-0.9.2.tar -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && tar xzf /usr/src/yaf-2.3.5.tgz -C /usr/src \
+    && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole \
