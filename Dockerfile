@@ -229,7 +229,7 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole \
+    && docker-php-ext-enable redis yac yaf swoole ftp gmp imap ldap mysql mysqlnd odbc pcntl pdo_odbc readline tidy wddx xmlrpc xsl zlib \
 # strip 所有扩展
     && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
@@ -242,10 +242,7 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'|grep -v tidy \
     )" \
-    && mv /tmp/mssql.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
-    && mv /tmp/pdo_dblib.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
-    && echo 'extension=mssql.so' > /usr/local/etc/php/conf.d/docker-php-ext-mssql.ini \
-    && echo 'extension=pdo_dblib.so' > /usr/local/etc/php/conf.d/docker-php-ext-pdo_dblib.ini \
+    && apk add --no-cache --virtual .build-tidy-deps  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted  tidyhtml
 #==============PHP-END==============
     \
     && apk del .build-deps \
