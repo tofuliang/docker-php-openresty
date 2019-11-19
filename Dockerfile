@@ -229,11 +229,11 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole ftp gmp imap ldap mysql mysqlnd odbc pcntl pdo_odbc readline tidy wddx xmlrpc xsl zlib \
+    && docker-php-ext-enable redis yac yaf swoole ftp gmp imap ldap mysql mysqlnd odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
 # strip 所有扩展
     && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
-    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/*.a" \
+    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"*.a \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
