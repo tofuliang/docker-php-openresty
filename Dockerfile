@@ -194,7 +194,7 @@ RUN set -x \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
-            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'|grep -v tidy \
     )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
