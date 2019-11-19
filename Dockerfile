@@ -65,8 +65,6 @@ ARG PHP_DEPS="\
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
-COPY mssql.so /tmp/mssql.so
-COPY pdo_dblib.so /tmp/pdo_dblib.so
 COPY docker-php-source /usr/local/bin/
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
 
@@ -229,7 +227,7 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole ftp gmp imap ldap mysql mysqlnd odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
+    && docker-php-ext-enable redis yac yaf swoole ftp gmp imap ldap mssql mysql mysqlnd odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
 # strip 所有扩展
     && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
