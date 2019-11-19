@@ -233,6 +233,7 @@ RUN set -x \
 # strip 所有扩展
     && echo "zend_extension=/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.so" > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
+    && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/*.a" \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
@@ -242,7 +243,7 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'|grep -v tidy \
     )" \
-    && apk add --no-cache --virtual .build-tidy-deps  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted  tidyhtml
+    && apk add --no-cache --virtual .ext-tidy-deps  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted tidyhtml \
 #==============PHP-END==============
     \
     && apk del .build-deps \
@@ -251,6 +252,9 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
+    && rm -fr /tmp/* \
+    && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
+    && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
     && apk add --no-cache supervisor logrotate sudo \
 #    openssh \
 # 日志目录
