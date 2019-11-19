@@ -240,7 +240,7 @@ RUN set -x \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
-            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 } |grep -v tidy' \
+            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }'|grep -v tidy \
     )" \
     && mv /tmp/mssql.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
     && mv /tmp/pdo_dblib.so "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/" \
