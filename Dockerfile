@@ -219,6 +219,11 @@ RUN set -x \
     && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
     && echo 'zend_extension=opcache.so' > /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/"* \
+# 安装composer
+    && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
+    && php composer-setup.php \
+    && php -r "unlink('composer-setup.php');" \
+    && mv composer.phar /usr/local/bin/composer \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
