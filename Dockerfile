@@ -199,7 +199,11 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf swoole-4.3.5 xdebug imagick pdo_sqlsrv-5.3.0 \
+    && pecl install redis yac-2.0.2 yaf xdebug imagick pdo_sqlsrv-5.3.0 \
+    && cd /usr/src && pecl download swoole-4.3.5 \
+    && tar xzf /usr/src/swoole-4.3.5.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.3.5  \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole imagick pdo_sqlsrv \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
