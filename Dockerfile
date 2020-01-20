@@ -206,7 +206,11 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf swoole xdebug imagick \
+    && pecl install redis yac-2.0.2 yaf xdebug imagick \
+    && cd /usr/src && pecl download swoole \
+    && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.4.15 \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
