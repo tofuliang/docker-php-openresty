@@ -179,15 +179,15 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
-    && apk add --no-cache --repository http://nl.alpinelinux.org/alpine/edge/community \
-            gnu-libiconv \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+           gnu-libiconv \
     ; \
     \
 #==============PHP-START==============
     mkdir -p /usr/src; \
     cd /usr/src; \
     \
-    wget -O php.tar.xz "$PHP_URL"; \
+    curl -fSkL --retry 5  -o php.tar.xz "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
         echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
@@ -265,6 +265,7 @@ RUN set -x \
     && sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
+    && cd /tmp \
     && docker-php-source delete \
     \
     && runDeps="$( \
@@ -288,21 +289,25 @@ RUN set -x \
     && patch -p1 -i fix_gcc8.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.3.tgz -o /usr/src/memcached-3.1.3.tgz \
-    && tar xzf /usr/src/memcached-3.1.3.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.1.3 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.4.tgz -o /usr/src/memcached-3.1.4.tgz \
+    && tar xzf /usr/src/memcached-3.1.4.tgz -C /usr/src \
+    && cd /usr/src/memcached-3.1.4 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.0.tar.gz -o /usr/src/tideways-5.0.0.tar.gz \
-    && tar xzf /usr/src/tideways-5.0.0.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-5.0.0 \
+    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.1.tar.gz -o /usr/src/tideways-5.0.1.tar.gz \
+    && tar xzf /usr/src/tideways-5.0.1.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-5.0.1 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yaf-3.0.8 xdebug \
+    && pecl install redis yaf xdebug \
 #与php7.3不兼容    yac-2.0.2 \
-    swoole imagick \
+    imagick \
+    && cd /usr/src && pecl download swoole \
+    && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.4.15 \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis swoole sodium imagick yaf \
 #与php7.3不兼容    yac \
 # strip 所有扩展
@@ -310,9 +315,14 @@ RUN set -x \
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/sodium.a" \
     && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
     && strip "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
+# 安装composer
+    && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
+    && php composer-setup.php \
+    && php -r "unlink('composer-setup.php');" \
+    && mv composer.phar /usr/local/bin/composer \
 # 删除源码文件
-    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
-    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
+#    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
+#    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
     && phpExtrunDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
@@ -391,17 +401,18 @@ RUN set -x \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
     && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache supervisor openssh logrotate sudo tzdata \
+    && apk add --no-cache supervisor logrotate sudo tzdata \
+#    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
-    && chown www-data:www-data -R /usr/local/var/log \
+    && chown www-data:www-data -R /usr/local/var/log
 # SSH
-    && { mkdir /var/run/sshd || true; } \
-    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
-    && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
+#    && { mkdir /var/run/sshd || true; } \
+#    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
+#    && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
@@ -423,4 +434,3 @@ EXPOSE 443
 EXPOSE 9001
 
 CMD ["/usr/local/bin/daemon"]
-
