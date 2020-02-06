@@ -52,7 +52,7 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
-# https://github.com/docker-library/php/issues/494
+# https://github.com/docker-library/php/issues/494 \
         libressl \
         imagemagick \
         graphviz \
@@ -203,7 +203,7 @@ RUN set -x \
     && cd /usr/src && pecl download swoole-4.3.5 \
     && tar xzf /usr/src/swoole-4.3.5.tgz -C /usr/src \
     && cd /usr/src/swoole-4.3.5  \
-    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole imagick pdo_sqlsrv \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/`ls /usr/local/lib/php/extensions`/opcache.a" \
