@@ -217,7 +217,7 @@ RUN set -x \
     && cd /usr/src && pecl download swoole \
     && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
     && cd /usr/src/swoole-4.4.15 \
-    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis swoole sodium imagick yaf \
 #与php7.3不兼容    yac \
 # strip 所有扩展
