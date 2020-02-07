@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.8
+FROM alpine:3.11
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -52,7 +52,6 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
-# https://github.com/docker-library/php/issues/494
         libressl \
         imagemagick \
         graphviz \
@@ -186,21 +185,22 @@ RUN set -x \
     && mv /tmp/musl-fixes.patch /usr/src/libmemcached-1.0.18/musl-fixes.patch \
     && cd /usr/src/libmemcached-1.0.18 \
     && patch -p1 -i musl-fixes.patch \
+    && sed -i 's/(opt_servers == false)/(!opt_servers)/g' clients/memflush.cc  \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.0.4.tgz -o /usr/src/memcached-3.0.4.tgz \
-    && tar xzf /usr/src/memcached-3.0.4.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.0.4 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.5.tgz -o /usr/src/memcached-3.1.5.tgz \
+    && tar xzf /usr/src/memcached-3.1.5.tgz -C /usr/src \
+    && cd /usr/src/memcached-3.1.5 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://codeload.github.com/tideways/php-profiler-extension/tar.gz/v4.1.6 -o /usr/src/tideways-4.1.6.tar.gz \
-    && tar xzf /usr/src/tideways-4.1.6.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-4.1.6 \
+    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.2.tar.gz -o /usr/src/tideways-5.0.2.tar.gz \
+    && tar xzf /usr/src/tideways-5.0.2.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-5.0.2 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable tideways \
+    && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.2 yaf xdebug imagick \
+    && pecl install redis yac-2.0.3 yaf xdebug imagick \
     && cd /usr/src && pecl download swoole \
     && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
     && cd /usr/src/swoole-4.4.15 \
@@ -231,7 +231,10 @@ RUN set -x \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
-    && apk add --no-cache supervisor logrotate sudo \
+    && rm -fr /tmp/* \
+    && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
+    && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
+    && apk add --no-cache supervisor logrotate sudo tzdata \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
