@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.9
+FROM alpine:3.11
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -90,9 +90,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.11.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.11.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="657cf6464bac28e9490c59c07a2cf7bb76c200f09cfadf6e44ea64e95fa01021"
+ARG PHP_URL="https://secure.php.net/get/php- 7.3.14.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php- 7.3.14.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="cc05dd373ca5d36652800762f65c10e828a17de35aaf246262e3efa99d00cdb0"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -289,27 +289,24 @@ RUN set -x \
     && patch -p1 -i fix_gcc8.patch \
     && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 # 从源码编译安装支持sasl的memcached扩展
-    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.4.tgz -o /usr/src/memcached-3.1.4.tgz \
-    && tar xzf /usr/src/memcached-3.1.4.tgz -C /usr/src \
-    && cd /usr/src/memcached-3.1.4 \
+    && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.5.tgz -o /usr/src/memcached-3.1.5.tgz \
+    && tar xzf /usr/src/memcached-3.1.5.tgz -C /usr/src \
+    && cd /usr/src/memcached-3.1.5 \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.1.tar.gz -o /usr/src/tideways-5.0.1.tar.gz \
-    && tar xzf /usr/src/tideways-5.0.1.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-5.0.1 \
+    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.2.tar.gz -o /usr/src/tideways-5.0.2.tar.gz \
+    && tar xzf /usr/src/tideways-5.0.2.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-5.0.2 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yaf xdebug \
-#与php7.3不兼容    yac-2.0.2 \
-    imagick \
+    && pecl install redis yac-2.0.3 yaf xdebug imagick \
     && cd /usr/src && pecl download swoole \
     && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
     && cd /usr/src/swoole-4.4.15 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis swoole sodium imagick yaf \
-#与php7.3不兼容    yac \
+    && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/sodium.a" \
