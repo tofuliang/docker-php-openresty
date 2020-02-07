@@ -21,8 +21,8 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php- 7.3.14.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php- 7.3.14.tar.xz.asc/from/this/mirror"
+ARG PHP_URL="https://secure.php.net/get/php-7.3.14.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.14.tar.xz.asc/from/this/mirror"
 ARG PHP_SHA256="cc05dd373ca5d36652800762f65c10e828a17de35aaf246262e3efa99d00cdb0"
 ARG PHP_MD5=""
 
@@ -55,7 +55,6 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
-# https://github.com/docker-library/php/issues/494
         libressl \
         imagemagick \
         graphviz \
