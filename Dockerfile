@@ -21,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.14.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.14.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="cc05dd373ca5d36652800762f65c10e828a17de35aaf246262e3efa99d00cdb0"
+ARG PHP_URL="https://secure.php.net/get/php-7.3.17.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.17.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="6a30304c27f7e7a94538f5ffec599f600ee93aedbbecad8aa4f8bec539b10ad8"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -211,10 +211,15 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole \
-    && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.4.15 \
+    && cd /usr/src && pecl download swoole-4.5.0 \
+    && tar xzf /usr/src/swoole-4.5.0.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.0 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && curl -fSkL --retry 5 https://github.com/swoole/sdebug/archive/sdebug_2_9-beta.tar.gz -o /usr/src/sdebug_2_9-beta.tar.gz \
+    && tar xzf /usr/src/sdebug_2_9-beta.tar.gz -C /usr/src \
+    && cd /usr/src/sdebug-sdebug_2_9-beta \
+    && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` \
+    && cp /usr/src/sdebug-sdebug_2_9-beta/modules/xdebug.so "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/sdebug.so" \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/opcache.a" \
