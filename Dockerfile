@@ -277,7 +277,7 @@ RUN set -x \
 # 配置GD库,开启更多图片支持
     && docker-php-ext-configure gd --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
 # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql pcntl shmop soap sockets sysvmsg sysvsem sysvshm zip \
 # 从源码编译安装支持sasl的libmemcached
     && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
     && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
@@ -301,9 +301,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole \
-    && tar xzf /usr/src/swoole-4.4.15.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.4.15 \
+    && cd /usr/src && pecl download swoole-4.5.2 \
+    && tar xzf /usr/src/swoole-4.5.2.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.2 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
