@@ -21,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.17.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.17.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="6a30304c27f7e7a94538f5ffec599f600ee93aedbbecad8aa4f8bec539b10ad8"
+ARG PHP_URL="https://secure.php.net/get/php-7.4.6.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.6.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="d740322f84f63019622b9f369d64ea5ab676547d2bdcf12be77a5a4cffd06832"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -38,13 +38,16 @@ ARG PHPIZE_DEPS="\
         pkgconf \
         re2c \
         argon2-dev \
+        coreutils \
         curl-dev \
         libedit-dev \
-        libxml2-dev \
-        sqlite-dev \
-        coreutils \
-        libressl-dev \
         libsodium-dev \
+        libxml2-dev \
+        linux-headers \
+        oniguruma-dev \
+        openssl-dev \
+        sqlite-dev \
+        libressl-dev \
         imagemagick-dev \
         icu-dev \
         libzip-dev \
@@ -55,7 +58,7 @@ ARG PHP_DEPS="\
         curl \
         tar \
         xz \
-        libressl \
+        openssl \
         imagemagick \
         graphviz \
         ttf-freefont \
@@ -146,11 +149,17 @@ RUN set -x \
         --with-password-argon2 \
 # https://wiki.php.net/rfc/libsodium
         --with-sodium=shared \
+# always build against system sqlite3 (https://github.com/php/php-src/commit/6083a387a81dbbd66d6316a3a12a63f06d5f7109)
+        --with-pdo-sqlite=/usr \
+        --with-sqlite3=/usr \
         \
         --with-curl \
         --with-libedit \
         --with-openssl \
         --with-zlib \
+        \
+# in PHP 7.4+, the pecl/pear installers are officially deprecated (requiring an explicit "--with-pear") and will be removed in PHP 8+; see also https://github.com/docker-library/php/issues/846#issuecomment-505638494
+        --with-pear \
         \
 # bundled pcre does not support JIT on s390x
 # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
@@ -158,6 +167,7 @@ RUN set -x \
         \
         $PHP_EXTRA_CONFIGURE_ARGS \
     && make -j`grep -c ^processor /proc/cpuinfo` \
+    && find -type f -name '*.a' -delete \
     && make install \
     && cp /usr/src/php/php.ini-development $PHP_INI_DIR/php.ini-development \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
@@ -211,9 +221,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole-4.5.0 \
-    && tar xzf /usr/src/swoole-4.5.0.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.5.0 \
+    && cd /usr/src && pecl download swoole-4.5.2 \
+    && tar xzf /usr/src/swoole-4.5.2.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.2 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && curl -fSkL --retry 5 https://github.com/swoole/sdebug/archive/sdebug_2_9-beta.tar.gz -o /usr/src/sdebug_2_9-beta.tar.gz \
     && tar xzf /usr/src/sdebug_2_9-beta.tar.gz -C /usr/src \
@@ -240,6 +250,7 @@ RUN set -x \
             | sort -u \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
+    && cd /usr/local && find -type f -name '*.a' -delete \
 #==============PHP-END==============
     \
     && apk del .build-deps \
