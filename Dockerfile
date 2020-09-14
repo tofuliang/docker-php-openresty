@@ -1,14 +1,22 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 
-FROM alpine:3.9
+ARG RESTY_IMAGE_BASE="alpine"
+ARG RESTY_IMAGE_TAG="3.11"
 
-MAINTAINER tofuiang <tofuliang@gmail.com>
+FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
+
+LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 # Docker Build Arguments
-ARG RESTY_VERSION="1.15.8.2"
-ARG RESTY_OPENSSL_VERSION="1.1.1c"
-ARG RESTY_PCRE_VERSION="8.43"
+ARG RESTY_IMAGE_BASE="alpine"
+ARG RESTY_IMAGE_TAG="3.11"
+ARG RESTY_VERSION="1.15.8.3"
+ARG RESTY_OPENSSL_VERSION="1.1.1g"
+ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
+ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
+ARG RESTY_PCRE_VERSION="8.44"
+
 ARG RESTY_CONFIG_OPTIONS="\
     --with-compat \
     --with-file-aio \
@@ -64,6 +72,8 @@ LABEL resty_image_base="${RESTY_IMAGE_BASE}"
 LABEL resty_image_tag="${RESTY_IMAGE_TAG}"
 LABEL resty_version="${RESTY_VERSION}"
 LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
+LABEL resty_openssl_patch_version="${RESTY_OPENSSL_PATCH_VERSION}"
+LABEL resty_openssl_url_base="${RESTY_OPENSSL_URL_BASE}"
 LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
 LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
 LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
@@ -73,10 +83,8 @@ LABEL resty_add_package_rundeps="${RESTY_ADD_PACKAGE_RUNDEPS}"
 LABEL resty_eval_pre_configure="${RESTY_EVAL_PRE_CONFIGURE}"
 LABEL resty_eval_post_make="${RESTY_EVAL_POST_MAKE}"
 
-# These are not intended to be user-specified
-ARG _RESTY_CONFIG_DEPS="--with-openssl=/tmp/openssl-${RESTY_OPENSSL_VERSION} --with-pcre=/tmp/pcre-${RESTY_PCRE_VERSION}"
 
-ARG OPENRESTY_BUILD_DEPS="\
+RUN apk add --no-cache --virtual .build-deps \
         build-base \
         coreutils \
         curl \
@@ -88,18 +96,14 @@ ARG OPENRESTY_BUILD_DEPS="\
         perl-dev \
         readline-dev \
         zlib-dev \
-        "
-
-ARG OPENRESTY_DEPS="\
+        ${RESTY_ADD_PACKAGE_BUILDDEPS} \
+    && apk add --no-cache \
         gd \
         geoip \
         libgcc \
         libxslt \
         zlib \
-        "
-
-# ensure www-data user exists
-RUN set -x \
+        ${RESTY_ADD_PACKAGE_RUNDEPS} \
     && addgroup -g 82 -S www-data \
     && adduser -u 82 -D -S -G www-data www-data \
 # 82 is the standard uid/gid for "www-data" in Alpine
@@ -107,39 +111,21 @@ RUN set -x \
 # https://git.alpinelinux.org/aports/tree/main/lighttpd/lighttpd.pre-install?h=3.9-stable
 # https://git.alpinelinux.org/aports/tree/main/nginx/nginx.pre-install?h=3.9-stable
     \
-    && apk add --no-cache --virtual .build-deps \
-        $OPENRESTY_BUILD_DEPS \
-    && apk add --no-cache --virtual .persistent-deps \
-        $OPENRESTY_DEPS \
-    \
-    && apk add --no-cache --virtual .fetch-deps \
-        gnupg \
-        openssl \
-    \
-#==============OPENRESTY-START==============
-    \
-# These are not intended to be user-specified
-# 1) Install apk dependencies
-# 2) Download and untar OpenSSL, PCRE, and OpenResty
-# 3) Build OpenResty
-# 4) Cleanup
-    && unset CFLAGS \
-    && unset CPPFLAGS \
-    && unset LDFLAGS \
     && cd /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
-    && curl -fSkL --retry 5 https://www.openssl.org/source/openssl-${RESTY_OPENSSL_VERSION}.tar.gz -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+    && cd /tmp \
+    && curl -fSkL --retry 5 "${RESTY_OPENSSL_URL_BASE}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz" -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
     && cd openssl-${RESTY_OPENSSL_VERSION} \
     && if [ $(echo ${RESTY_OPENSSL_VERSION} | cut -c 1-5) = "1.1.1" ] ; then \
         echo 'patching OpenSSL 1.1.1 for OpenResty' \
-        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-1.1.1c-sess_set_get_cb_yield.patch | patch -p1 ; \
+        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
     fi \
     && if [ $(echo ${RESTY_OPENSSL_VERSION} | cut -c 1-5) = "1.1.0" ] ; then \
         echo 'patching OpenSSL 1.1.0 for OpenResty' \
         && curl -s https://raw.githubusercontent.com/openresty/openresty/ed328977028c3ec3033bc25873ee360056e247cd/patches/openssl-1.1.0j-parallel_build_fix.patch | patch -p1 \
-        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-1.1.0d-sess_set_get_cb_yield.patch | patch -p1 ; \
+        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
     fi \
     && ./config \
       no-threads shared zlib -g \
@@ -162,7 +148,7 @@ RUN set -x \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
-    && curl -fSkL --retry 5 https://github.com/openresty/openresty/releases/download/v${RESTY_VERSION}/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && eval ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} \
