@@ -1,0 +1,36 @@
+name: DockerFile Updater
+
+on:
+  push:
+    branches:
+      - master
+  watch:
+    types: [ started ]
+  schedule:
+    - cron: 30 2 * * *
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          ref: master
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set git identity
+        run : |
+          git config --global user.email "tofuliang@gmail.com"
+          git config --global user.name "tofuliang"
+      - name: source update
+        run: |
+          cp update.sh /tmp/update.sh
+          for b in 74 73 72;do
+          git checkout -f php${b}
+          cp /tmp/update.sh update.sh
+          ./update.sh $b
+          rm -fr update.sh
+          git add . && git commit -m "update" && git push
+          done
