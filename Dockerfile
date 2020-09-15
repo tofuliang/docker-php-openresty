@@ -11,7 +11,7 @@ LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 # Docker Build Arguments
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.11"
-ARG RESTY_VERSION="1.15.8.3"
+ARG RESTY_VERSION="1.17.8.2"
 ARG RESTY_OPENSSL_VERSION="1.1.1g"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
@@ -148,7 +148,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
-    && curl -fSkL --retry 5 https://github.com/openresty/openresty/releases/download/v${RESTY_VERSION}/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && eval ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} \
@@ -186,6 +186,7 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/
 
 ADD etc/supervisor /etc/supervisor
 ADD daemon /usr/local/bin/daemon
+ADD mm /bin/mm
 
 # Expose ports
 # SSH
@@ -197,4 +198,3 @@ EXPOSE 443
 #EXPOSE 9001
 
 CMD ["/usr/local/bin/daemon"]
-

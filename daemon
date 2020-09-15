@@ -12,4 +12,6 @@ chown 0.0 -R /etc/logrotate.d/
 
 chown 0.0 /etc/logrotate.conf
 
+/bin/mm
+
 /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
