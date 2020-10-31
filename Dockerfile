@@ -208,9 +208,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole-4.5.5 \
-    && tar xzf /usr/src/swoole-4.5.5.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.5.5 \
+    && cd /usr/src && pecl download swoole-4.5.6 \
+    && tar xzf /usr/src/swoole-4.5.6.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.6 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
