@@ -221,9 +221,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole-4.5.9 \
-    && tar xzf /usr/src/swoole-4.5.9.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.5.9 \
+    && cd /usr/src && pecl download swoole-4.5.10 \
+    && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.10 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && curl -fSkL --retry 5 https://github.com/swoole/sdebug/archive/sdebug_2_9-beta.tar.gz -o /usr/src/sdebug_2_9-beta.tar.gz \
     && tar xzf /usr/src/sdebug_2_9-beta.tar.gz -C /usr/src \
