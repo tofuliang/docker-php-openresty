@@ -21,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.3.26.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.26.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="d93052f4cb2882090b6a37fd1e0c764be1605a2461152b7f6b8f04fa48875208"
+ARG PHP_URL="https://secure.php.net/get/php-7.3.27.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.3.27.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="65f616e2d5b6faacedf62830fa047951b0136d5da34ae59e6744cbaf5dca148d"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
