@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.11
+FROM alpine:3.13
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -15,15 +15,15 @@ ARG PHP_INI_DIR="/usr/local/etc"
 # Adds GNU HASH segments to generated executables (this is used if present, and is much faster than sysv hash; in this configuration, sysv hash is also generated)
 # https://github.com/docker-library/php/issues/272
 ARG PHP_EXTRA_CONFIGURE_ARGS="--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data"
-ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
+ARG  PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
+ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.4.18.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.18.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="ab97f22b128d21dcbc009b50a37aaea0051b2721cbcd122d9e00e6ffc3c4b7e1"
+ARG PHP_URL="https://secure.php.net/get/php-8.0.5.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.0.5.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="5dd358b35ecd5890a4f09fb68035a72fe6b45d3ead6999ea95981a107fd1f2ab"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -138,6 +138,9 @@ RUN set -x \
         \
 # https://github.com/docker-library/php/issues/439
         --with-mhash \
+		\
+# https://github.com/docker-library/php/issues/822
+	--with-pic \
         \
 # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
         --enable-ftp \
@@ -158,12 +161,12 @@ RUN set -x \
         --with-openssl \
         --with-zlib \
         \
-# in PHP 7.4+, the pecl/pear installers are officially deprecated (requiring an explicit "--with-pear") and will be removed in PHP 8+; see also https://github.com/docker-library/php/issues/846#issuecomment-505638494
+# in PHP 7.4+, the pecl/pear installers are officially deprecated (requiring an explicit "--with-pear")
         --with-pear \
         \
 # bundled pcre does not support JIT on s390x
 # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
-        $(test "$gnuArch" = 's390x-linux-gnu' && echo '--without-pcre-jit') \
+		$(test "$gnuArch" = 's390x-linux-musl' && echo '--without-pcre-jit') \
         \
         $PHP_EXTRA_CONFIGURE_ARGS \
     && make -j`grep -c ^processor /proc/cpuinfo` \
