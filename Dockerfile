@@ -21,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.4.16.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.16.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="1c16cefaf88ded4c92eed6a8a41eb682bb2ef42429deb55f1c4ba159053fb98b"
+ARG PHP_URL="https://secure.php.net/get/php-7.4.18.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.18.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="ab97f22b128d21dcbc009b50a37aaea0051b2721cbcd122d9e00e6ffc3c4b7e1"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -221,9 +221,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole-4.6.3 \
-    && tar xzf /usr/src/swoole-4.6.3.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.6.3 \
+    && cd /usr/src && pecl download swoole-4.6.6 \
+    && tar xzf /usr/src/swoole-4.6.6.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.6.6 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && curl -fSkL --retry 5 https://github.com/swoole/sdebug/archive/sdebug_2_9-beta.tar.gz -o /usr/src/sdebug_2_9-beta.tar.gz \
     && tar xzf /usr/src/sdebug_2_9-beta.tar.gz -C /usr/src \
