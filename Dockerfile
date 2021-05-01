@@ -194,16 +194,16 @@ RUN set -x \
     && phpize && ./configure --enable-memcached --enable-memcached-json --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable memcached \
 # 从源码编译安装 tideways 扩展
-    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.2.tar.gz -o /usr/src/tideways-5.0.2.tar.gz \
-    && tar xzf /usr/src/tideways-5.0.2.tar.gz -C /usr/src \
-    && cd /usr/src/php-xhprof-extension-5.0.2 \
+    && curl -fSkL --retry 5 https://github.com/tideways/php-xhprof-extension/archive/v5.0.4.tar.gz -o /usr/src/tideways-5.0.4.tar.gz \
+    && tar xzf /usr/src/tideways-5.0.4.tar.gz -C /usr/src \
+    && cd /usr/src/php-xhprof-extension-5.0.4 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yac-2.0.3 yaf xdebug imagick \
-    && cd /usr/src && pecl download swoole-4.5.3 \
-    && tar xzf /usr/src/swoole-4.5.3.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.5.3 \
+    && pecl install redis yac yaf xdebug-2.9.8 imagick \
+    && cd /usr/src && pecl download swoole-4.5.10 \
+    && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.5.10 \
     && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
