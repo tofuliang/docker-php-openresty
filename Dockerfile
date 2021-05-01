@@ -47,6 +47,7 @@ ARG PHPIZE_DEPS="\
         libsodium-dev \
         imagemagick-dev \
         icu-dev \
+        boost-dev \
         "
 
 ARG PHP_DEPS="\
@@ -59,6 +60,7 @@ ARG PHP_DEPS="\
         imagemagick \
         graphviz \
         ttf-freefont \
+        boost \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
