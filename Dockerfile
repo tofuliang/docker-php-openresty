@@ -51,6 +51,7 @@ ARG PHPIZE_DEPS="\
         imagemagick-dev \
         icu-dev \
         libzip-dev \
+        boost-dev \
         "
 
 ARG PHP_DEPS="\
@@ -63,6 +64,7 @@ ARG PHP_DEPS="\
         graphviz \
         ttf-freefont \
         libzip \
+        boost \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
