@@ -18,12 +18,13 @@ fi
 
 cd /usr/src/php/ext
 
-usage() {
-	echo "usage: $0 ext-name [configure flags]"
-	echo "   ie: $0 gd --with-jpeg-dir=/usr/local/something"
-	echo
-	echo 'Possible values for ext-name:'
-	find . \
+ext="$1"
+if [ -z "$ext" ] || [ ! -d "$ext" ]; then
+	echo >&2 "usage: $0 ext-name [configure flags]"
+	echo >&2 "   ie: $0 gd --with-jpeg-dir=/usr/local/something"
+	echo >&2
+	echo >&2 'Possible values for ext-name:'
+	find /usr/src/php/ext \
 			-mindepth 2 \
 			-maxdepth 2 \
 			-type f \
@@ -32,14 +33,6 @@ usage() {
 		| xargs -n1 basename \
 		| sort \
 		| xargs
-	echo
-	echo 'Some of the above modules are already compiled into PHP; please check'
-	echo 'the output of "php -i" to see which modules are already loaded.'
-}
-
-ext="$1"
-if [ -z "$ext" ] || [ ! -d "$ext" ]; then
-	usage >&2
 	exit 1
 fi
 shift
@@ -59,11 +52,7 @@ if [ "$pm" = 'apk' ]; then
 	fi
 fi
 
-if command -v dpkg-architecture > /dev/null; then
-	gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"
-	set -- --build="$gnuArch" "$@"
-fi
-
+set -x
 cd "$ext"
 phpize
-./configure --enable-option-checking=fatal "$@"
+./configure "$@"
