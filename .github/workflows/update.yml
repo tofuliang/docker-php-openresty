@@ -30,7 +30,7 @@ jobs:
           for b in 80 74 73 72;do
           git checkout -f php${b}
           cp /tmp/update.sh update.sh
-          ./update.sh $b
+          chmod a+x ./update.sh && ./update.sh $b
           rm -fr update.sh
           git add . && git commit -m "update" && git push || true
           done
