@@ -1,6 +1,6 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.11
+FROM alpine:3.13
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -45,6 +45,8 @@ ARG PHPIZE_DEPS="\
         imagemagick-dev \
         icu-dev \
         unixodbc-dev \
+        patch \
+        gnupg \
         "
 
 ARG PHP_DEPS="\
