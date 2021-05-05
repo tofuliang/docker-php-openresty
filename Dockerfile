@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.11
+FROM alpine:3.13
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -45,6 +45,8 @@ ARG PHPIZE_DEPS="\
         libressl-dev \
         imagemagick-dev \
         icu-dev \
+        patch \
+        gnupg \
         "
 
 ARG PHP_DEPS="\
