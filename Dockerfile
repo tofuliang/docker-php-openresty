@@ -1,7 +1,7 @@
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
-FROM alpine:3.11
+FROM alpine:3.13
 
 MAINTAINER tofuiang <tofuliang@gmail.com>
 
@@ -62,6 +62,8 @@ ARG PHP_DEPS="\
         ttf-freefont \
         libzip \
         boost \
+        patch \
+        gnupg \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
