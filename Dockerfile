@@ -1,20 +1,19 @@
 # Dockerfile - alpine
-# https://github.com/openresty/docker-openresty
 # https://github.com/docker-library/php
 FROM alpine:3.13
 
-MAINTAINER tofuiang <tofuliang@gmail.com>
+LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 # Docker Build Arguments
-
-ARG PHP_INI_DIR="/usr/local/etc"
+ARG BRANCH="74"
+ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 # Apply stack smash protection to functions using local buffers and alloca()
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
 # Enable optimization (-O2)
 # Enable linker optimization (this sorts the hash buckets to improve cache locality, and is non-default)
 # Adds GNU HASH segments to generated executables (this is used if present, and is much faster than sysv hash; in this configuration, sysv hash is also generated)
 # https://github.com/docker-library/php/issues/272
-ARG PHP_EXTRA_CONFIGURE_ARGS="--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data"
+ARG PHP_EXTRA_CONFIGURE_ARGS="--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data --prefix=/usr/local/php${BRANCH}"
 ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
@@ -53,7 +52,6 @@ ARG PHPIZE_DEPS="\
         libzip-dev \
         boost-dev \
         patch \
-        gnupg \
         "
 
 ARG PHP_DEPS="\
@@ -64,15 +62,17 @@ ARG PHP_DEPS="\
         openssl \
         imagemagick \
         graphviz \
-        ttf-freefont \
+#        ttf-freefont \
         libzip \
-        boost \
+        boost-filesystem \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
 COPY fix_gcc8.patch /tmp/fix_gcc8.patch
 COPY docker-php-source /usr/local/bin/
 COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
+
+ENV PATH="/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbin:${PATH}"
 
 # ensure www-data user exists
 RUN set -x \
@@ -83,20 +83,21 @@ RUN set -x \
 # https://git.alpinelinux.org/aports/tree/main/lighttpd/lighttpd.pre-install?h=3.9-stable
 # https://git.alpinelinux.org/aports/tree/main/nginx/nginx.pre-install?h=3.9-stable
     \
-    && mkdir -p $PHP_INI_DIR/php/conf.d \
+    && mkdir -p $PHP_INI_DIR/conf.d \
+    && mkdir -p $PHP_INI_DIR/php-fpm.d \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
-        $OPENRESTY_DEPS \
     \
     && apk add --no-cache --virtual .fetch-deps \
         gnupg \
         openssl \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
            gnu-libiconv \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
     ; \
     \
 #==============PHP-START==============
@@ -133,7 +134,7 @@ RUN set -x \
     && ./configure \
         --build="$gnuArch" \
         --with-config-file-path="$PHP_INI_DIR" \
-        --with-config-file-scan-dir="$PHP_INI_DIR/php/conf.d" \
+        --with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
         \
         --disable-cgi \
         \
@@ -176,17 +177,17 @@ RUN set -x \
     && cp /usr/src/php/php.ini-development $PHP_INI_DIR/php.ini-development \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
-    && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
-    && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
+    && cp /usr/local/php${BRANCH}/etc/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
+    && cp /usr/local/php${BRANCH}/etc/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
+    && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php${BRANCH}\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/group = nobody/group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.owner = nobody/listen.owner = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.group = www-data/listen.group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/g' $PHP_INI_DIR/php-fpm.d/www.conf \
-    && { find /usr/local/bin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
+    && sed -i "s/listen = 127.0.0.1:9000/listen = 0.0.0.0:90${BRANCH}/g" $PHP_INI_DIR/php-fpm.d/www.conf \
+    && { find /usr/local//bin /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && make clean \
     && cd /tmp \
     && docker-php-source delete \
@@ -195,11 +196,11 @@ RUN set -x \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
-            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+            | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
-    && docker-php-ext-configure gd --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
+    && docker-php-ext-configure gd --enable-gd-jis-conv \
 # 安装常用扩展
     && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
 # 从源码编译安装支持sasl的libmemcached
@@ -228,17 +229,17 @@ RUN set -x \
     && cd /usr/src && pecl download swoole-4.6.6 \
     && tar xzf /usr/src/swoole-4.6.6.tgz -C /usr/src \
     && cd /usr/src/swoole-4.6.6 \
-    && phpize && ./configure --with-php-config=/usr/local/bin/php-config --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
     && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
     && cd /usr/src/yasd-0.3.7 \
     && phpize --clean && phpize && ./configure && make -j`grep -c ^processor /proc/cpuinfo` \
-    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/yasd.so" \
+    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/yasd.so" \
     && docker-php-ext-enable redis yac yaf swoole sodium imagick \
 # strip 所有扩展
-    && rm -fr "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/*.a" \
-    && echo 'zend_extension=opcache.so' >  /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && strip "/usr/local/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
+    && rm -fr "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/*.a" \
+    && echo 'zend_extension=opcache.so' >  ${PHP_INI_DIR}/conf.d/docker-php-ext-opcache.ini \
+    && strip "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
 # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
     && php composer-setup.php \
@@ -251,7 +252,7 @@ RUN set -x \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
-            | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+            | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
     && cd /usr/local && find -type f -name '*.a' -delete \
 #==============PHP-END==============
@@ -262,9 +263,9 @@ RUN set -x \
     && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
     && rm -fr /tmp/* \
-    && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
-    && { cd /usr/local/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache supervisor logrotate sudo tzdata \
+    && rm -fr /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
+    && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
+    && apk add --no-cache logrotate sudo tzdata \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
@@ -281,10 +282,12 @@ RUN set -x \
 #ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
-ADD etc/supervisor /etc/supervisor
-ADD etc/php/conf.d /usr/local/etc/php/conf.d/
-ADD etc/php/php-fpm.d /usr/local/etc/php-fpm.d/
-ADD daemon /usr/local/bin/daemon
+ADD etc/php/conf.d ${PHP_INI_DIR}/conf.d/
+ADD etc/php/php-fpm.d ${PHP_INI_DIR}/php-fpm.d/
+# ADD daemon /usr/local/bin/daemon
+ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
+ADD s6-overlay/cont-init.d /etc/cont-init.d/
+ADD s6-overlay/services.d /etc/services.d/
 
 # Expose ports
 # SSH
@@ -292,6 +295,7 @@ ADD daemon /usr/local/bin/daemon
 # Xdebug
 #EXPOSE 9001
 # fpm
-EXPOSE 9000
+EXPOSE 90${BRANCH}
 
-CMD ["/usr/local/bin/daemon"]
+ENTRYPOINT ["/init"]
+# CMD ["/usr/local/bin/daemon"]
