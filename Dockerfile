@@ -88,7 +88,6 @@ RUN set -x \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
-        $OPENRESTY_BUILD_DEPS \
     && apk add --no-cache --virtual .persistent-deps \
         $PHP_DEPS \
     \
@@ -135,6 +134,7 @@ RUN set -x \
         --build="$gnuArch" \
         --with-config-file-path="$PHP_INI_DIR" \
         --with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
+        --sysconfdir="$PHP_INI_DIR" \
         \
         --disable-cgi \
         \
@@ -177,8 +177,8 @@ RUN set -x \
     && cp /usr/src/php/php.ini-development $PHP_INI_DIR/php.ini-development \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
-    && cp /usr/local/php${BRANCH}/etc/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
-    && cp /usr/local/php${BRANCH}/etc/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
+    && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
+    && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php${BRANCH}\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
