@@ -16,10 +16,7 @@ web:
     ports:
         - "2203:22"
         - "81:80"
-        - "9001:9001"
     environment:
-      XDEBUG_CONFIG: remote_host=10.254.254.254
-      PHP_IDE_CONFIG: serverName=Docker-PHP71
       TERM: xterm
     restart: always
     privileged: true

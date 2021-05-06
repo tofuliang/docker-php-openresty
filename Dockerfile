@@ -2,7 +2,7 @@
 # https://github.com/openresty/docker-openresty
 
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.11"
+ARG RESTY_IMAGE_TAG="3.13"
 
 FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
@@ -10,9 +10,9 @@ LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 # Docker Build Arguments
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.11"
-ARG RESTY_VERSION="1.17.8.2"
-ARG RESTY_OPENSSL_VERSION="1.1.1g"
+ARG RESTY_IMAGE_TAG="3.13"
+ARG RESTY_VERSION="1.19.3.1"
+ARG RESTY_OPENSSL_VERSION="1.1.1k"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
 ARG RESTY_PCRE_VERSION="8.44"
@@ -111,6 +111,7 @@ RUN apk add --no-cache --virtual .build-deps \
 # https://git.alpinelinux.org/aports/tree/main/lighttpd/lighttpd.pre-install?h=3.9-stable
 # https://git.alpinelinux.org/aports/tree/main/nginx/nginx.pre-install?h=3.9-stable
     \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
     && cd /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
@@ -171,9 +172,6 @@ RUN apk add --no-cache --virtual .build-deps \
     && apk add --no-cache supervisor logrotate sudo tzdata \
 #    openssh \
 # 日志目录
-    && mkdir -p /usr/local/var/log/php-fpm/ \
-    && mkdir -p /usr/local/var/log/php_errors/ \
-    && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
     && chown www-data:www-data -R /usr/local/var/log
 # SSH
@@ -184,8 +182,6 @@ RUN apk add --no-cache --virtual .build-deps \
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
-ADD etc/supervisor /etc/supervisor
-ADD daemon /usr/local/bin/daemon
 ADD mm /bin/mm
 
 # Expose ports
@@ -194,7 +190,6 @@ ADD mm /bin/mm
 # NGINX
 EXPOSE 80
 EXPOSE 443
-# Xdebug
-#EXPOSE 9001
 
-CMD ["/usr/local/bin/daemon"]
+ENTRYPOINT ["/init"]
+# CMD ["/usr/local/bin/daemon"]

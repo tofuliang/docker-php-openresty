@@ -1,0 +1,2 @@
+#!/usr/bin/execlineb -P
+/usr/local/openresty/nginx/sbin/nginx -g 'daemon off;'
