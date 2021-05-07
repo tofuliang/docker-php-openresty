@@ -1,2 +1,3 @@
-#!/usr/bin/execlineb -P
-php-fpm
+#!/usr/bin/with-contenv sh
+
+exec /usr/local/php71/sbin/php-fpm
