@@ -50,7 +50,7 @@ ARG PHPIZE_DEPS="\
         imagemagick-dev \
         icu-dev \
         libzip-dev \
-        boost-dev \
+#        boost-dev \
         patch \
         "
 
@@ -64,7 +64,7 @@ ARG PHP_DEPS="\
         graphviz \
 #        ttf-freefont \
         libzip \
-        boost-filesystem \
+#        boost-filesystem \
         "
 
 COPY musl-fixes.patch /tmp/musl-fixes.patch
@@ -177,8 +177,8 @@ RUN set -x \
     && cp /usr/src/php/php.ini-development $PHP_INI_DIR/php.ini-development \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini-production \
     && cp /usr/src/php/php.ini-production $PHP_INI_DIR/php.ini \
-    && cp $PHP_INI_DIR/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
-    && cp $PHP_INI_DIR/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
+    && cp /usr/local/etc/php${BRANCH}/php-fpm.conf.default $PHP_INI_DIR/php-fpm.conf \
+    && cp /usr/local/etc/php${BRANCH}/php-fpm.d/www.conf.default $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/include=NONE\/etc\/php-fpm.d\/\*.conf/include=\/usr\/local\/etc\/php${BRANCH}\/php-fpm.d\/*.conf/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/;daemonize = yes/daemonize = no/g' $PHP_INI_DIR/php-fpm.conf \
     && sed -i 's/user = nobody/user = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
@@ -225,17 +225,17 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
-    && pecl install redis yac yaf xdebug imagick \
+    && pecl install redis yac yaf xdebug mongodb imagick \
     && cd /usr/src && pecl download swoole-4.6.6 \
     && tar xzf /usr/src/swoole-4.6.6.tgz -C /usr/src \
     && cd /usr/src/swoole-4.6.6 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
-    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
-    && cd /usr/src/yasd-0.3.7 \
-    && phpize --clean && phpize && ./configure && make -j`grep -c ^processor /proc/cpuinfo` \
-    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/yasd.so" \
-    && docker-php-ext-enable redis yac yaf swoole sodium imagick \
+#    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
+#    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
+#    && cd /usr/src/yasd-0.3.7 \
+#    && phpize --clean && phpize && ./configure && make -j`grep -c ^processor /proc/cpuinfo` \
+#    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/yasd.so" \
+    && docker-php-ext-enable redis yac yaf swoole sodium mongodb imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/*.a" \
     && echo 'zend_extension=opcache.so' >  ${PHP_INI_DIR}/conf.d/docker-php-ext-opcache.ini \
