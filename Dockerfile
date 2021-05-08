@@ -183,7 +183,9 @@ RUN apk add --no-cache --virtual .build-deps \
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
 ADD mm /bin/mm
-
+ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
+ADD s6-overlay/cont-init.d /etc/cont-init.d/
+ADD s6-overlay/services.d /etc/services.d/
 # Expose ports
 # SSH
 #EXPOSE 22
