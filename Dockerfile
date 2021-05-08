@@ -194,4 +194,3 @@ EXPOSE 80
 EXPOSE 443
 
 ENTRYPOINT ["/init"]
-# CMD ["/usr/local/bin/daemon"]
