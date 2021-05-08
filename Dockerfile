@@ -242,6 +242,7 @@ RUN set -x \
     && strip "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
 # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
+    && php composer-setup.php --1 --filename=composer1 --install-dir=/usr/local/bin \
     && php composer-setup.php \
     && php -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
@@ -265,7 +266,7 @@ RUN set -x \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache logrotate sudo tzdata \
+    && apk add --no-cache logrotate sudo tzdata git \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
@@ -284,7 +285,6 @@ ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 ADD etc/php/conf.d ${PHP_INI_DIR}/conf.d/
 ADD etc/php/php-fpm.d ${PHP_INI_DIR}/php-fpm.d/
-# ADD daemon /usr/local/bin/daemon
 ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
 ADD s6-overlay/cont-init.d /etc/cont-init.d/
 ADD s6-overlay/services.d /etc/services.d/
@@ -298,4 +298,3 @@ ADD s6-overlay/services.d /etc/services.d/
 EXPOSE 90${BRANCH}
 
 ENTRYPOINT ["/init"]
-# CMD ["/usr/local/bin/daemon"]
