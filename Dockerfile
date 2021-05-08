@@ -225,6 +225,7 @@ RUN set -x \
     && strip "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
 # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
+    && php composer-setup.php --1 --filename=composer1 --install-dir=/usr/local/bin \
     && php composer-setup.php \
     && php -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
@@ -248,7 +249,7 @@ RUN set -x \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache logrotate sudo tzdata \
+    && apk add --no-cache logrotate sudo tzdata git \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
