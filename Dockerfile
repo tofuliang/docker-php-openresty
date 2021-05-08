@@ -217,10 +217,11 @@ RUN set -x \
     && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
     && cd /usr/src/swoole-4.5.10 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole mongodb imagick \
+    && docker-php-ext-enable redis yac yaf swoole imagick \
 # strip 所有扩展
     && rm -fr "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/*.a" \
     && echo 'zend_extension=opcache.so' >  ${PHP_INI_DIR}/conf.d/docker-php-ext-opcache.ini \
+    && echo 'zend_extension=mongodb.so' >  ${PHP_INI_DIR}/conf.d/docker-php-ext-mongodb.ini \
     && strip "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -i|grep 'PHP API'|sed -e 's/PHP API => //'`/"* \
 # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
@@ -266,7 +267,6 @@ ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 ADD etc/php/conf.d ${PHP_INI_DIR}/conf.d/
 ADD etc/php/php-fpm.d ${PHP_INI_DIR}/php-fpm.d/
-# ADD daemon /usr/local/bin/daemon
 ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
 ADD s6-overlay/cont-init.d /etc/cont-init.d/
 ADD s6-overlay/services.d /etc/services.d/
@@ -280,4 +280,3 @@ ADD s6-overlay/services.d /etc/services.d/
 EXPOSE 90${BRANCH}
 
 ENTRYPOINT ["/init"]
-# CMD ["/usr/local/bin/daemon"]
