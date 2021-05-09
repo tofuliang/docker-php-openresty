@@ -197,6 +197,12 @@ RUN set -x \
     && cd /tmp \
     && docker-php-source delete \
     \
+    && runDeps="$( \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
+            | tr ',' '\n' \
+            | sort -u \
+            | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
     && docker-php-ext-configure gd --enable-gd-jis-conv \
@@ -250,7 +256,7 @@ RUN set -x \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
-    && runDeps="$( \
+    && phpExtrunDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
@@ -262,6 +268,7 @@ RUN set -x \
     && apk del .build-deps \
     && apk del .php-ext-build-deps \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
+    && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/share/man /usr/local/share/aclocal /usr/local/include /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
