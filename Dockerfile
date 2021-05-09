@@ -52,6 +52,7 @@ ARG PHPIZE_DEPS="\
         libzip-dev \
 #        boost-dev \
         patch \
+        upx \
         "
 
 ARG PHP_DEPS="\
@@ -181,17 +182,12 @@ RUN set -x \
     && sed -i 's/;listen.group = www-data/listen.group = www-data/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' $PHP_INI_DIR/php-fpm.d/www.conf \
     && sed -i "s/listen = 127.0.0.1:9000/listen = 0.0.0.0:90${BRANCH}/g" $PHP_INI_DIR/php-fpm.d/www.conf \
-    && { find /usr/local//bin /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
+    && { find /usr/local/bin /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
     && make clean \
     && cd /tmp \
     && docker-php-source delete \
     \
-    && runDeps="$( \
-        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
-            | tr ',' '\n' \
-            | sort -u \
-            | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
-    )" \
     && apk add --no-cache --virtual .php-ext-build-deps jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
 # 配置GD库,开启更多图片支持
     && docker-php-ext-configure gd --enable-gd-jis-conv \
@@ -243,7 +239,7 @@ RUN set -x \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
-    && phpExtrunDeps="$( \
+    && runDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
@@ -255,12 +251,11 @@ RUN set -x \
     && apk del .build-deps \
     && apk del .php-ext-build-deps \
     && apk add --no-cache --virtual .php-rundeps $runDeps \
-    && apk add --no-cache --virtual .php-ext-rundeps $phpExtrunDeps \
     && rm -fr /usr/src/* \
     && rm -fr /tmp/* \
-    && rm -fr /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
+    && rm -fr /usr/local/share/man /usr/local/share/aclocal /usr/local/include /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache logrotate sudo tzdata git \
+    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
