@@ -96,6 +96,7 @@ RUN apk add --no-cache --virtual .build-deps \
         perl-dev \
         readline-dev \
         zlib-dev \
+        upx \
         ${RESTY_ADD_PACKAGE_BUILDDEPS} \
     && apk add --no-cache \
         gd \
@@ -162,14 +163,16 @@ RUN apk add --no-cache --virtual .build-deps \
         pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
         openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
     && { find /usr/local/openresty -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
-    \
+    && upx /usr/local/openresty/nginx/sbin/nginx \
+    && find /usr/local -type f -name '*.a' -delete \
+    && rm -fr /usr/local/openresty/openssl/include /usr/local/openresty/pcre/share /usr/local/openresty/pcre/include \
 #==============OPENRESTY-END==============
     \
     && apk del .build-deps \
     && rm -fr /usr/src/* \
     && rm -fr /tmp/* \
     && rm -fr /usr/local/include /usr/local/share/man /usr/share/gtk-doc \
-    && apk add --no-cache supervisor logrotate sudo tzdata \
+    && apk add --no-cache logrotate sudo tzdata \
 #    openssh \
 # 日志目录
     && mkdir -p /usr/local/var/log/nginx/ \
