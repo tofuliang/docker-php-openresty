@@ -32,15 +32,19 @@ COPY --from=tofuliang/docker-php-openresty:php71 /usr/local/etc/php71 /usr/local
 
 RUN set -x \
     && for i in 80 74 73 72 71;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
+    && apk --no-cache add upx \
+    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && runDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
             | awk 'system("[ -e /usr/local" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
+    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
     && ln -s /usr/local/bin/php80 /usr/local/bin/php \
     && addgroup -g 82 -S www-data \
     && adduser -u 82 -D -S -G www-data www-data \
+    && apk del upx \
     && apk add --no-cache --virtual .persistent-deps \
         $runDeps \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
