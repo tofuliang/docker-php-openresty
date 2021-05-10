@@ -1,8 +1,6 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.13
-
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+FROM alpine:3.13 AS build
 
 # Docker Build Arguments
 ARG BRANCH="72"
@@ -86,6 +84,7 @@ RUN set -x \
     \
     && mkdir -p $PHP_INI_DIR/conf.d \
     && mkdir -p $PHP_INI_DIR/php-fpm.d \
+    && mkdir -p /usr/src \
     \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
@@ -96,12 +95,9 @@ RUN set -x \
         gnupg \
         openssl \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
-           gnu-libiconv \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    ; \
+           gnu-libiconv; \
     \
 #==============PHP-START==============
-    mkdir -p /usr/src; \
     cd /usr/src; \
     \
     curl -fSkL --retry 5  -o php.tar.xz "$PHP_URL"; \
@@ -238,39 +234,59 @@ RUN set -x \
 # 删除源码文件
 #    && { mkdir /opt || true; } && cd /opt && curl -fSkL --retry 5 https://codeload.github.com/Mirocow/pydbgpproxy/zip/master -o master.zip \
 #    && unzip master.zip && rm -fr master.zip && mv pydbgpproxy-master PHPRemoteDBGp \
+    && cd /usr/local && find -type f -name '*.a' -delete \
+    && { find /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; }
+
+#==============PHP-END==============
+
+    # && apk del .build-deps \
+    # && apk del .php-ext-build-deps
+
+FROM alpine:3.13
+
+LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+
+ARG BRANCH="72"
+ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
+
+COPY --from=build /usr/local/bin /usr/local/bin
+COPY --from=build /usr/local/lib /usr/local/lib
+COPY --from=build /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/bin
+COPY --from=build /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/sbin
+COPY --from=build /usr/local/php${BRANCH}/lib /usr/local/php${BRANCH}/lib
+COPY --from=build /usr/local/etc/php${BRANCH} /usr/local/etc/php${BRANCH}
+
+RUN set -x \
+    && addgroup -g 82 -S www-data \
+    && adduser -u 82 -D -S -G www-data www-data \
+    && apk add --no-cache upx \
+    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && runDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
             | tr ',' '\n' \
             | sort -u \
             | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
-    && cd /usr/local && find -type f -name '*.a' -delete \
-    && { find /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
-#==============PHP-END==============
-    \
-    && apk del .build-deps \
-    && apk del .php-ext-build-deps \
-    && apk add --no-cache --virtual .php-rundeps $runDeps \
-    && rm -fr /usr/src/* \
-    && rm -fr /tmp/* \
-    && rm -fr /usr/local/php${BRANCH}/include /usr/local/php${BRANCH}/share/man /usr/share/gtk-doc /usr/local/share/man /usr/local/share/aclocal /usr/local/include \
-    && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; } \
-    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz \
+    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && apk add --no-cache --virtual .persistent-deps $runDeps \
+    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
 #    openssh \
+    && apk del upx \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+           gnu-libiconv \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
+    ; \
 # 日志目录
-    && mkdir -p /usr/local/var/log/php-fpm/ \
+    mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
     && chown www-data:www-data -R /usr/local/var/log
-# SSH
-#    && { mkdir /var/run/sshd || true; } \
-#    && ssh-keygen -t rsa -b 4096 -f /etc/ssh/ssh_host_rsa_key -P "" \
-#    && echo "PermitRootLogin yes"  >> /etc/ssh/sshd_config
 
 # Add additional binaries into PATH for convenience
-#ENV PYTHONPATH=$PYTHONPATH:/opt/bin/PHPRemoteDBGp/pythonlib
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
+ENV PATH="/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbin:${PATH}"
 
 ADD etc/php/conf.d ${PHP_INI_DIR}/conf.d/
 ADD etc/php/php-fpm.d ${PHP_INI_DIR}/php-fpm.d/
