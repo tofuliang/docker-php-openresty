@@ -217,9 +217,9 @@ RUN set -x \
     && docker-php-ext-enable tideways_xhprof \
 # 使用pecl安装redis扩展
     && pecl install redis yac yaf xdebug mongodb imagick \
-    && cd /usr/src && pecl download swoole-4.6.6 \
-    && tar xzf /usr/src/swoole-4.6.6.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.6.6 \
+    && cd /usr/src && pecl download swoole-4.6.7 \
+    && tar xzf /usr/src/swoole-4.6.7.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.6.7 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
 #    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
 #    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
