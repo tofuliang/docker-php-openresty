@@ -53,6 +53,7 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream_ssl_preread_module \
     --with-threads \
     --add-module=/tmp/nginx-dav-ext-module-3.0.0/ \
+    --add-module=/tmp/ngx_http_proxy_connect_module-0.0.2/ \
     "
 ARG RESTY_CONFIG_OPTIONS_MORE=""
 ARG RESTY_LUAJIT_OPTIONS="--with-luajit-xcflags='-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'"
@@ -114,6 +115,7 @@ RUN apk add --no-cache --virtual .build-deps \
     \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
     && cd /tmp \
+    && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/archive/refs/tags/v0.0.2.tar.gz |tar xzf - -C /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
     && cd /tmp \
@@ -154,6 +156,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && eval ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} \
+    && patch -d build/nginx-1.19.3/ -p 1 < /tmp/ngx_http_proxy_connect_module-0.0.2/patch/proxy_connect_rewrite_1018.patch \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
