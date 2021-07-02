@@ -18,9 +18,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.0.7.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.0.7.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="d5fc2e4fc780a32404d88c360e3e0009bc725d936459668e9c2ac992f2d83654"
+ARG PHP_URL="https://secure.php.net/get/php-8.0.8.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.0.8.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="dc1668d324232dec1d05175ec752dade92d29bb3004275118bc3f7fc7cbfbb1c"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
