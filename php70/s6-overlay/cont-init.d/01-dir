@@ -1,0 +1,11 @@
+#!/bin/sh
+
+mkdir -p /usr/local/var/log/php-fpm
+
+mkdir -p /usr/local/var/log/php_errors
+
+mkdir -p /usr/local/var/log/php_slow
+
+mkdir -p /usr/local/var/log/nginx
+
+mkdir -p /usr/local/var/log/cron

@@ -1,0 +1,4 @@
+/etc/crontabs true 0:0 0600 0700
+/etc/logrotate.d/ true 0:0 0600 0700
+/etc/logrotate.conf true 0:0 0600 0700
+/usr/local/var false www-data:www-data,82:82 0644 0755

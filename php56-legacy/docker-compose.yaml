@@ -1,0 +1,26 @@
+web:
+    image: tofuliang/docker-php-openresty
+    volumes:
+        - /path/to/source/:/usr/local/var/www/project
+        - ./etc/nginx/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+        - ./etc/nginx/vhost/project.conf:/usr/local/openresty/nginx/conf/vhost/project.conf
+        - ./etc/php/conf.d/docker-php-ext-xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+        - ./etc/php/conf.d/date.timezone.ini:/usr/local/etc/php/conf.d/docker-date.timezone.ini
+        - ./etc/php/conf.d/error_log.ini:/usr/local/etc/php/conf.d/docker-php-error_log.ini
+        - ~/.ssh/id_rsa.pub:/host/id_rsa.pub
+        - ~/.ssh/id_rsa:/host/id_rsa
+    extra_hosts:
+        - "localhost:127.0.0.1"
+#    dns:
+#        - 8.8.8.8
+    ports:
+        - "2203:22"
+        - "81:80"
+        - "9001:9001"
+    environment:
+      XDEBUG_CONFIG: remote_host=10.254.254.254
+      PHP_IDE_CONFIG: serverName=Docker-PHP71
+      TERM: xterm
+    restart: always
+    privileged: true
+    cap_add: ['all']

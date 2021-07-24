@@ -5,7 +5,7 @@ on:
     branches:
       - master
   watch:
-    types: [ started ]
+    types: [started]
   schedule:
     - cron: 30 2 * * *
 
@@ -21,16 +21,15 @@ jobs:
           lfs: true
 
       - name: Set git identity
-        run : |
+        run: |
           git config --global user.email "tofuliang@gmail.com"
           git config --global user.name "tofuliang"
       - name: source update
         run: |
-          cp update.sh /tmp/update.sh
           for b in 80 74 73 72;do
-          git checkout -f php${b}
-          cp /tmp/update.sh update.sh
-          chmod a+x ./update.sh && ./update.sh $b
-          rm -fr update.sh
-          git add . && git commit -m "update" && git push || true
+          ( cd php${b}; \
+          cp ../update.sh update.sh; \
+          chmod a+x ./update.sh && ./update.sh $b; \
+          rm -fr update.sh )
           done
+          git add . && git commit -m "update" && git push || true
