@@ -26,7 +26,7 @@ jobs:
           git config --global user.name "tofuliang"
       - name: source update
         run: |
-          for b in 80 74 73 72;do
+          for b in 80 74 73;do
           ( cd php${b}; \
           cp ../update.sh update.sh; \
           chmod a+x ./update.sh && ./update.sh $b; \

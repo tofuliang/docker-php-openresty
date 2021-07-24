@@ -165,10 +165,10 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache --virtual .runupx upx  \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM alpine:3.14 AS tmp
@@ -213,14 +213,14 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
     && apk add --no-cache --virtual .persistent-deps $runDeps \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .runupx \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \

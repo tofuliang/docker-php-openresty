@@ -1,10 +1,10 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.4 AS build
+FROM alpine:3.8 AS build
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 # Docker Build Arguments
-ARG BRANCH="53"
+ARG BRANCH="56"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 # Apply stack smash protection to functions using local buffers and alloca()
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
@@ -19,9 +19,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://www.php.net/distributions/php-5.3.29.tar.bz2"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.3.29.tar.bz2.asc/from/this/mirror"
-ARG PHP_SHA256="c4e1cf6972b2a9c7f2777a18497d83bf713cdbecabb65d3ff62ba441aebb0091"
+ARG PHP_URL="https://secure.php.net/get/php-5.6.40.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.6.40.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="1369a51eee3995d7fbd1c5342e5cc917760e276d561595b6052b21ace2656d1c"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -40,7 +40,7 @@ ARG PHPIZE_DEPS="\
     libxml2-dev \
     sqlite-dev \
     coreutils \
-    openssl-dev \
+    libressl-dev \
     imagemagick-dev \
     openldap-dev \
     unixodbc-dev \
@@ -50,7 +50,6 @@ ARG PHPIZE_DEPS="\
     freetds-dev \
     readline-dev \
     libxslt-dev \
-    mariadb-dev \
     cyrus-sasl-dev \
     "
 
@@ -58,7 +57,9 @@ ARG PHP_DEPS="\
     ca-certificates \
     curl \
     tar \
-    openssl \
+    xz \
+    # https://github.com/docker-library/php/issues/494
+    libressl \
     imagemagick \
     graphviz \
     ttf-freefont \
@@ -93,22 +94,22 @@ RUN set -x \
     #==============PHP-START==============
     cd /usr/src; \
     \
-    wget -O php.tar.bz2 "$PHP_URL"; \
+    wget -O php.tar.xz "$PHP_URL"; \
     \
     if [ -n "$PHP_SHA256" ]; then \
-    echo "$PHP_SHA256 *php.tar.bz2" | sha256sum -c -; \
+    echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
     fi; \
     if [ -n "$PHP_MD5" ]; then \
-    echo "$PHP_MD5 *php.tar.bz2" | md5sum -c -; \
+    echo "$PHP_MD5 *php.tar.xz" | md5sum -c -; \
     fi; \
     \
     if [ -n "$PHP_ASC_URL" ]; then \
-    wget -O php.tar.bz2.asc "$PHP_ASC_URL"; \
+    wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
     gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
     done; \
-    gpg --batch --verify php.tar.bz2.asc php.tar.bz2; \
+    gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
     rm -rf "$GNUPGHOME"; \
     fi;
@@ -124,9 +125,9 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache xz \
-    && curl -fSkL --retry 5 https://ftp.gnu.org/gnu/libtool/libtool-2.4.5.tar.xz -o /usr/src/libtool.tar.xz \
+    && curl -fSkL --retry 5 https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz -o /usr/src/libtool.tar.xz \
     && tar xJf /usr/src/libtool.tar.xz -C /usr/src \
-    && cd /usr/src/libtool-2.4.5 \
+    && cd /usr/src/libtool-2.4.6 \
     && ./configure --prefix=/usr && make -j`grep -c ^processor /proc/cpuinfo` && make install 
 
 RUN set -x \
@@ -144,7 +145,10 @@ RUN set -x \
     --sysconfdir="$PHP_INI_DIR" \
     \
     --disable-cgi \
+    \
+    # make sure invalid --configure-flags are fatal errors intead of just warnings
     --enable-pcntl=shared \
+    --enable-option-checking=fatal \
     \
     # https://github.com/docker-library/php/issues/439
     --with-mhash=shared \
@@ -154,7 +158,7 @@ RUN set -x \
     # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
     --enable-mbstring \
     # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
-    --enable-mysqlnd=shared \
+    --enable-mysqlnd \
     \
     --with-curl \
     --with-libedit=shared \
@@ -219,7 +223,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
     # 使用pecl安装扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.2.7 imagick-3.3.0 ZendOpcache \
+    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.5.5 imagick \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xf /usr/src/yac-0.9.2.tar -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -227,10 +231,8 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/php${BRANCH}/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole imagick ftp gmp imap ldap mssql mysql mysqli mysqlnd odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
+    && docker-php-ext-enable redis yac yaf swoole imagick opcache ftp gmp imap ldap mssql mysql mysqli odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
     # strip 所有扩展
-    && echo "zend_extension=/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/opcache.so" >  ${PHP_INI_DIR}/conf.d/docker-php-ext-opcache.ini \
-    && echo "zend_extension=/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/xdebug.so" >  ${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini \
     && { find /usr/local/php${BRANCH}/lib -type f -perm +0111 -exec strip --strip-all '{}' + || true; } 
 RUN set -x \
     # 安装composer
@@ -247,10 +249,10 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .runupx upx  \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
-FROM alpine:3.4 AS tmp
+FROM alpine:3.8 AS tmp
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -258,11 +260,11 @@ COPY --from=build /tmp/pack.tar /tmp/pack.tar
 
 RUN tar xf /tmp/pack.tar -C /
 
-FROM alpine:3.4
+FROM alpine:3.8
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
-ARG BRANCH="53"
+ARG BRANCH="56"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 
 COPY --from=tmp /usr/local /usr/local
@@ -285,16 +287,16 @@ RUN set -x \
     scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/php${BRANCH} \
     | tr ',' '\n' \
     | sort -u \
-    | awk 'system("[ -e /usr/local/php${BRANCH}/lib" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    | awk 'system("[ -e /usr/local/php${BRANCH}" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
     | grep -v libmemcache \
     )" \
     && apk add --no-cache logrotate sudo tzdata git tar xz curl \
     && apk add --no-cache $runDeps \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .runupx \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \

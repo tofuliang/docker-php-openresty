@@ -45,7 +45,7 @@ RUN set -x \
     | sort -u \
     | awk 'system("[ -e /usr/local" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )" \
-    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && ln -s /usr/local/bin/php80 /usr/local/bin/php \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \

@@ -248,7 +248,7 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .runupx upx  \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM alpine:3.8 AS tmp
@@ -293,9 +293,9 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git tar xz curl \
     && apk add --no-cache $runDeps \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .runupx \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \

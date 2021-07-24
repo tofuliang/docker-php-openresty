@@ -127,14 +127,13 @@ RUN set -x \
     && tar xzf /usr/src/tideways-5.0.4.tar.gz -C /usr/src \
     && cd /usr/src/php-xhprof-extension-5.0.4 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable tideways_xhprof \
     # 使用pecl安装扩展
     && pecl install redis yac yaf xdebug-2.9.8 mongodb imagick \
     && cd /usr/src && pecl download swoole-4.5.10 \
     && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
     && cd /usr/src/swoole-4.5.10 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable memcached.so redis.so yac.so yaf.so swoole.so imagick.so opcache.so mongodb.so \
+    && docker-php-ext-enable tideways_xhprof.so memcached.so redis.so yac.so yaf.so swoole.so imagick.so opcache.so mongodb.so \
     # strip 所有扩展
     && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec strip --strip-all '{}' + || true; } 
 RUN set -x \
@@ -152,10 +151,10 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache --virtual .runupx upx  \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM alpine:3.14 AS tmp
@@ -200,14 +199,14 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
     && apk add --no-cache --virtual .persistent-deps $runDeps \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .runupx \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \

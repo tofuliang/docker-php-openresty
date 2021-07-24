@@ -4,7 +4,7 @@ FROM alpine:3.4 AS build
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 # Docker Build Arguments
-ARG BRANCH="54"
+ARG BRANCH="53"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 # Apply stack smash protection to functions using local buffers and alloca()
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
@@ -19,9 +19,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.4.45.tar.bz2.asc/from/this/mirror"
-ARG PHP_SHA256="4e0d28b1554c95cfaea6fa2b64aac85433f158ce72bb571bcd5574f98f4c6582"
+ARG PHP_URL="https://www.php.net/distributions/php-5.3.29.tar.bz2"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-5.3.29.tar.bz2.asc/from/this/mirror"
+ARG PHP_SHA256="c4e1cf6972b2a9c7f2777a18497d83bf713cdbecabb65d3ff62ba441aebb0091"
 ARG PHP_MD5=""
 
 # persistent / runtime deps
@@ -50,6 +50,7 @@ ARG PHPIZE_DEPS="\
     freetds-dev \
     readline-dev \
     libxslt-dev \
+    mariadb-dev \
     cyrus-sasl-dev \
     "
 
@@ -136,18 +137,14 @@ RUN set -x \
     && cd /usr/src/php \
     &&  ln -s /usr/include/tidybuffio.h /usr/include/buffio.h \
     && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-    # support linux-musl    
-    && wget https://github.com/php/php-src/raw/PHP-7.1/config.sub -O config.sub \
     && ./configure \
+    --build="$gnuArch" \
     --with-config-file-path="$PHP_INI_DIR" \
     --with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
     --sysconfdir="$PHP_INI_DIR" \
     \
     --disable-cgi \
-    \
-    # make sure invalid --configure-flags are fatal errors intead of just warnings
     --enable-pcntl=shared \
-    --enable-option-checking=fatal \
     \
     # https://github.com/docker-library/php/issues/439
     --with-mhash=shared \
@@ -157,7 +154,7 @@ RUN set -x \
     # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
     --enable-mbstring \
     # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
-    --enable-mysqlnd \
+    --enable-mysqlnd=shared \
     \
     --with-curl \
     --with-libedit=shared \
@@ -222,7 +219,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
     # 使用pecl安装扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.4.1 imagick ZendOpcache \
+    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.2.7 imagick-3.3.0 ZendOpcache \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xf /usr/src/yac-0.9.2.tar -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -230,7 +227,7 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/php${BRANCH}/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole imagick ftp gmp imap ldap mssql mysql mysqli odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
+    && docker-php-ext-enable redis yac yaf swoole imagick ftp gmp imap ldap mssql mysql mysqli mysqlnd odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
     # strip 所有扩展
     && echo "zend_extension=/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/opcache.so" >  ${PHP_INI_DIR}/conf.d/docker-php-ext-opcache.ini \
     && echo "zend_extension=/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/xdebug.so" >  ${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini \
@@ -250,7 +247,7 @@ RUN set -x \
 
 RUN set -x \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .runupx upx  \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM alpine:3.4 AS tmp
@@ -265,7 +262,7 @@ FROM alpine:3.4
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
-ARG BRANCH="54"
+ARG BRANCH="53"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 
 COPY --from=tmp /usr/local /usr/local
@@ -295,9 +292,9 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git tar xz curl \
     && apk add --no-cache $runDeps \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
-    && { find /bin -size +100 -type f -perm +0111 -exec upx '{}' + || true; } \
+    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .runupx \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
