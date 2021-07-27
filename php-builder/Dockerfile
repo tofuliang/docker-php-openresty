@@ -1,6 +1,6 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.14
+FROM --platform=$TARGETPLATFORM alpine:3.14
 
 # Docker Build Arguments
 
@@ -32,7 +32,6 @@ ARG PHPIZE_DEPS="\
     boost-dev \
     jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
     patch \
-    upx \
     "
 
 ARG PHP_DEPS="\

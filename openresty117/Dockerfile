@@ -4,7 +4,7 @@
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.14"
 
-FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
+FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -97,7 +97,6 @@ RUN apk add --no-cache --virtual .build-deps \
     perl-dev \
     readline-dev \
     zlib-dev \
-    upx \
     ${RESTY_ADD_PACKAGE_BUILDDEPS} \
     && apk add --no-cache \
     gd \
@@ -106,6 +105,7 @@ RUN apk add --no-cache --virtual .build-deps \
     libxslt \
     zlib \
     ${RESTY_ADD_PACKAGE_RUNDEPS} \
+    && apk add --no-cache upx >/dev/null 2>&1 ||true \
     && cd /tmp \
     && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/archive/refs/tags/v0.0.2.tar.gz |tar xzf - -C /tmp \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
@@ -159,25 +159,27 @@ RUN apk add --no-cache --virtual .build-deps \
     openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
     && { find /usr/local -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && { find /usr/local -type f -name "*.so*" -exec strip --strip-all '{}' + || true; } \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    fi \
     && find /usr/local -type f -name '*.a' -delete && find -type f -name '*.la' -delete \
     && rm -fr /usr/local/include /usr/local/share /usr/local/openresty/openssl/include /usr/local/openresty/pcre/share /usr/local/openresty/pcre/include /usr/local/openresty/luajit/include /usr/local/openresty/pod /usr/local/openresty/site \
     #==============OPENRESTY-END==============
     \
     && tar cvf /tmp/pack.tar /usr/local
 
-FROM alpine:3.14 as tmp
+FROM --platform=$TARGETPLATFORM alpine:3.14 as tmp
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 COPY --from=build /tmp/pack.tar /tmp/pack.tar
 RUN tar xf /tmp/pack.tar -C /
 
-FROM alpine:3.14
+FROM --platform=$TARGETPLATFORM alpine:3.14
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -192,15 +194,19 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && apk add --no-cache --virtual .pack upx curl \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
+    && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --virtual .pack curl dpkg \
+    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && apk add --no-cache logrotate sudo tzdata \
-    && { find /usr/local/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \
     && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    fi \
     && runDeps="$( \
     scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
     | tr ',' '\n' \
@@ -209,8 +215,9 @@ RUN set -x \
     | grep so:l \
     | grep -v pcre \
     )" \
-    && apk add --no-cache --virtual .persistent-deps $runDeps \
-    && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && apk add --no-cache --virtual .persistent-deps $runDeps musl \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
@@ -219,6 +226,8 @@ RUN set -x \
     && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && apk del .upxd; \
+    fi \
     && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/nginx/ \

@@ -1,4 +1,4 @@
-FROM alpine:3.14
+FROM --platform=$TARGETPLATFORM alpine:3.14
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -37,26 +37,35 @@ COPY --from=tofuliang/docker-php-openresty:php70 /usr/local/etc/php70 /usr/local
 
 RUN set -x \
     && for i in 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
-    && apk --no-cache add upx \
-    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --virtual .pack dpkg \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    fi \
     && runDeps="$( \
     scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
     | tr ',' '\n' \
     | sort -u \
     | awk 'system("[ -e /usr/local" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    | grep so:l \
+    | grep -v libmemcache|grep -v libc.musl \
     )" \
-    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && ln -s /usr/local/bin/php80 /usr/local/bin/php \
-    && addgroup -g 82 -S www-data || true \
-    && adduser -u 82 -D -S -G www-data www-data || true \
-    && apk del upx \
-    && apk add --no-cache --virtual .persistent-deps \
-    $runDeps \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
-    gnu-libiconv \
-    && apk add --no-cache logrotate sudo tzdata git curl busybox-extras ca-certificates tar xz \
-    #    openssh \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
+    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
+    && apk add --no-cache --virtual .persistent-deps $runDeps musl \
+    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && apk del .upxd; \
+    fi \
+    && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \

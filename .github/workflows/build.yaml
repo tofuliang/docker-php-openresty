@@ -8,17 +8,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     strategy:
+      fail-fast: false
       matrix:
         branch: [
-            php80,
-            php74,
-            php73,
+            # php80,
+            # php74,
+            # php73,
             # php72,
             # php71,
             # php70,
-            # php56,
+            php56,
             # php55,
             # php54,
             # php53,
@@ -39,5 +39,7 @@ jobs:
 
       - name: Build
         run: |
-          docker build -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }}
-          docker push tofuliang/docker-php-openresty:${{ matrix.branch }}
+          docker run --rm --privileged tonistiigi/binfmt:latest --install all
+          docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master
+          docker buildx use multibulider
+          docker buildx build --platform linux/arm -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push

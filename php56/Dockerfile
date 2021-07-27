@@ -1,6 +1,6 @@
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM alpine:3.8 AS build
+FROM --platform=$TARGETPLATFORM alpine:3.8 AS build
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 # Docker Build Arguments
@@ -248,11 +248,13 @@ RUN set -x \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; }
 
 RUN set -x \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .runupx upx  \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    fi \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
-FROM alpine:3.8 AS tmp
+FROM --platform=$TARGETPLATFORM alpine:3.8 AS tmp
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -260,7 +262,7 @@ COPY --from=build /tmp/pack.tar /tmp/pack.tar
 
 RUN tar xf /tmp/pack.tar -C /
 
-FROM alpine:3.8
+FROM --platform=$TARGETPLATFORM alpine:3.8
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
@@ -281,23 +283,30 @@ RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv tidyhtml \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .runupx upx  \
-    && { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --virtual .pack dpkg \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
+    fi \
     && runDeps="$( \
     scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/php${BRANCH} \
     | tr ',' '\n' \
     | sort -u \
     | awk 'system("[ -e /usr/local/php${BRANCH}" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
-    | grep -v libmemcache \
+    | grep -v libmemcache|grep -v libc.musl \
     )" \
     && apk add --no-cache logrotate sudo tzdata git tar xz curl \
     && apk add --no-cache $runDeps \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-amd64.tar.gz| tar xfz - -C / \
-    && { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && if [ "$(command -v upx)q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && apk del .runupx \
+    && apk del .upxd; \
+    fi \
+    && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
