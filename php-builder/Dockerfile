@@ -30,8 +30,17 @@ ARG PHPIZE_DEPS="\
     icu-dev \
     libzip-dev \
     boost-dev \
-    jpeg-dev libpng-dev freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
+    gmp gmp-dev \
+    tidyhtml-libs tidyhtml-dev \
+    enchant2 enchant2-dev \
+    imap-dev openldap-dev aspell-dev net-snmp-dev libxslt-dev libffi-dev \
+    libwebp libwebp-dev libxpm libxpm-dev \
+    jpeg-dev libpng-dev freetype freetype-dev libxml2-dev gettext-dev cyrus-sasl-dev bzip2-dev \
     patch \
+    memcached-dev \
+    libmemcached \
+    libmemcached-dev \
+    libmemcached-libs \
     "
 
 ARG PHP_DEPS="\
@@ -47,10 +56,6 @@ ARG PHP_DEPS="\
     boost-filesystem \
     "
 
-COPY musl-fixes.patch /tmp/musl-fixes.patch
-COPY fix_gcc8.patch /tmp/fix_gcc8.patch
-
-
 # ensure www-data user exists
 RUN set -x \
     && mkdir -p /usr/src \
@@ -58,16 +63,4 @@ RUN set -x \
     && apk add --no-cache \
     $PHPIZE_DEPS \
     && apk add --no-cache \
-    $PHP_DEPS \
-    \
-    # 从源码编译安装支持sasl的libmemcached
-    && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
-    && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
-    && mv /tmp/musl-fixes.patch /usr/src/libmemcached-1.0.18/musl-fixes.patch \
-    && mv /tmp/fix_gcc8.patch /usr/src/libmemcached-1.0.18/fix_gcc8.patch \
-    && cd /usr/src/libmemcached-1.0.18 \
-    && patch -p1 -i musl-fixes.patch \
-    && patch -p1 -i fix_gcc8.patch \
-    && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    # 删除源码文件
-    && cd /usr/src/ && rm -fr *
+    $PHP_DEPS

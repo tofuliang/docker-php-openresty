@@ -6,6 +6,9 @@ LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 # Docker Build Arguments
 ARG BRANCH="56"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
+
+ARG TARGETARCH
+
 # Apply stack smash protection to functions using local buffers and alloca()
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
 # Enable optimization (-O2)
@@ -51,6 +54,10 @@ ARG PHPIZE_DEPS="\
     readline-dev \
     libxslt-dev \
     cyrus-sasl-dev \
+    memcached-dev \
+    libmemcached \
+    libmemcached-dev \
+    libmemcached-libs \
     "
 
 ARG PHP_DEPS="\
@@ -67,7 +74,6 @@ ARG PHP_DEPS="\
     freetds \
     "
 
-COPY musl-fixes.patch /tmp/musl-fixes.patch
 COPY docker-php-source /usr/bin/
 COPY docker-php-ext-* /usr/bin/
 
@@ -85,10 +91,8 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
     gnupg \
     openssl \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
-    gnu-libiconv \
-    && apk add --no-cache --virtual .build-tidy-deps --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
-    tidyhtml-dev \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv \
+    && apk add --no-cache --virtual .build-tidy-deps tidyhtml-dev \
     ; \
     \
     #==============PHP-START==============
@@ -115,15 +119,6 @@ RUN set -x \
     fi;
 
 RUN set -x \
-    # 从源码编译安装支持sasl的libmemcached
-    && curl -fSkL --retry 5 https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz  -o /usr/src/libmemcached-1.0.18.tar.gz \
-    && tar xzf /usr/src/libmemcached-1.0.18.tar.gz -C /usr/src \
-    && mv /tmp/musl-fixes.patch /usr/src/libmemcached-1.0.18/musl-fixes.patch \
-    && cd /usr/src/libmemcached-1.0.18 \
-    && patch -p1 -i musl-fixes.patch \
-    && ./configure --enable-sasl && make -j`grep -c ^processor /proc/cpuinfo` && make install
-
-RUN set -x \
     && apk add --no-cache xz \
     && curl -fSkL --retry 5 https://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz -o /usr/src/libtool.tar.xz \
     && tar xJf /usr/src/libtool.tar.xz -C /usr/src \
@@ -136,7 +131,7 @@ RUN set -x \
     LDFLAGS="$PHP_LDFLAGS" \
     && docker-php-source extract \
     && cd /usr/src/php \
-    &&  ln -s /usr/include/tidybuffio.h /usr/include/buffio.h \
+    && ln -s /usr/include/tidybuffio.h /usr/include/buffio.h \
     && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
     && ./configure \
     --build="$gnuArch" \
@@ -223,7 +218,10 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
     # 使用pecl安装扩展
-    && pecl install redis-4.3.0 swoole-1.10.5 xdebug-2.5.5 imagick \
+    && pecl install redis-4.3.0 xdebug-2.5.5 imagick \
+    && if [ "q$TARGETARCH" != "q386" ];then \
+    pecl install swoole-1.10.5 && docker-php-ext-enable swoole; \
+    fi \
     && cd /usr/src && pecl download yac-0.9.2 yaf-2.3.5 \
     && tar xf /usr/src/yac-0.9.2.tar -C /usr/src \
     && cd /usr/src/yac-0.9.2 \
@@ -231,9 +229,10 @@ RUN set -x \
     && tar xf /usr/src/yaf-2.3.5.tar -C /usr/src \
     && cd /usr/src/yaf-2.3.5 \
     && phpize && ./configure --with-php-config=/usr/local/php${BRANCH}/bin/php-config --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable redis yac yaf swoole imagick opcache ftp gmp imap ldap mssql mysql mysqli odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
+    && docker-php-ext-enable redis yac yaf imagick opcache ftp gmp imap ldap mssql mysql mysqli odbc pcntl pdo_odbc pdo_dblib readline tidy wddx xmlrpc xsl zlib \
     # strip 所有扩展
-    && { find /usr/local/php${BRANCH}/lib -type f -perm +0111 -exec strip --strip-all '{}' + || true; } 
+    && { find /usr/local/php${BRANCH}/lib -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec chmod -x '{}' + || true; }
 RUN set -x \
     # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
@@ -250,9 +249,13 @@ RUN set -x \
 RUN set -x \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    if [ "$(echo $TARGETPLATFORM|grep -E 'amd64|386')q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    else \
+    { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --best '{}' + || true; }; \
     fi \
-    && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
+    fi \
+    && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM --platform=$TARGETPLATFORM alpine:3.8 AS tmp
 
@@ -269,6 +272,8 @@ LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 ARG BRANCH="56"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 
+ARG TARGETARCH
+
 COPY --from=tmp /usr/local /usr/local
 
 ADD etc/php/conf.d ${PHP_INI_DIR}/conf.d/
@@ -282,7 +287,8 @@ ENV PATH="/usr/local/bin:/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbi
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv tidyhtml \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv \
+    && apk add --no-cache tidyhtml \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack dpkg \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -294,19 +300,24 @@ RUN set -x \
     | sort -u \
     | awk 'system("[ -e /usr/local/php${BRANCH}" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
-    | grep -v libmemcache|grep -v libc.musl \
+    | grep -v libc.musl \
     )" \
     && apk add --no-cache logrotate sudo tzdata git tar xz curl \
     && apk add --no-cache $runDeps \
-    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /bin -size +100 -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    else \
+    { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --best '{}' + || true; }; \
+    fi \
+    && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .upxd; \
     fi \
-    && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \

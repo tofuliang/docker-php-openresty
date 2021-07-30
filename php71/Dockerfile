@@ -1,11 +1,14 @@
 
 # Dockerfile - alpine
 # https://github.com/docker-library/php
-FROM tofuliang/docker-php-openresty:php-builder AS build
+FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder AS build
 
 # Docker Build Arguments
 ARG BRANCH="71"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
+
+ARG TARGETARCH
+
 # Apply stack smash protection to functions using local buffers and alloca()
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
 # Enable optimization (-O2)
@@ -114,9 +117,9 @@ RUN set -x \
 RUN set -x \
     && apk --no-cache add libmcrypt-dev unixodbc unixodbc-dev \
     # 配置GD库,开启更多图片支持
-    && docker-php-ext-configure gd --enable-gd-native-ttf --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
+    && docker-php-ext-configure gd --with-webp-dir --with-jpeg-dir --with-xpm-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
     # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext mcrypt mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext gmp imap ldap mysqli pcntl pdo_mysql pspell shmop snmp soap sockets sysvmsg sysvsem sysvshm tidy xsl zip \
     # 从源码编译安装支持sasl的memcached扩展
     && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.5.tgz -o /usr/src/memcached-3.1.5.tgz \
     && tar xzf /usr/src/memcached-3.1.5.tgz -C /usr/src \
@@ -129,13 +132,17 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     # 使用pecl安装扩展
     && pecl install redis yac yaf xdebug-2.9.8 mongodb imagick \
-    && cd /usr/src && pecl download swoole-4.5.10 \
+    && if [ "q$TARGETARCH" != "q386" ];then \
+    cd /usr/src && pecl download swoole-4.5.10 \
     && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
     && cd /usr/src/swoole-4.5.10 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable tideways_xhprof.so memcached.so redis.so yac.so yaf.so swoole.so imagick.so opcache.so mongodb.so \
+    && docker-php-ext-enable swoole.so; \
+    fi \
+    && docker-php-ext-enable tideways_xhprof.so memcached.so redis.so yac.so yaf.so imagick.so opcache.so mongodb.so \
     # strip 所有扩展
-    && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec strip --strip-all '{}' + || true; } 
+    && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec strip --strip-all '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec chmod -x '{}' + || true; }
 RUN set -x \
     # 安装composer
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
@@ -152,12 +159,13 @@ RUN set -x \
 RUN set -x \
     && apk add --no-cache upx >/dev/null 2>&1 ||true \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    else \
+    { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --best '{}' + || true; }; \
     fi \
-    && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/lib/libhashkit.so* /usr/local/lib/libmemcached.so* /usr/local/lib/libmemcachedutil.so* /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
+    fi \
+    && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
 
 FROM --platform=$TARGETPLATFORM alpine:3.14 AS tmp
 
@@ -173,6 +181,8 @@ LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 ARG BRANCH="71"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
+
+ARG TARGETARCH
 
 COPY --from=tmp /usr/local /usr/local
 
@@ -190,6 +200,7 @@ RUN set -x \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv \
     && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack dpkg \
+    && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*" -type f -perm +0111 -exec upx -d '{}' + || true; } \
     fi \
@@ -199,24 +210,24 @@ RUN set -x \
     | sort -u \
     | awk 'system("[ -e /usr/local/php${BRANCH}" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
-    | grep -v libmemcache|grep -v libc.musl \
+    | grep -v libc.musl \
     )" \
     && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
-    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
+    { find /usr/local -size +1024 -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    else \
+    { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --best '{}' + || true; }; \
+    fi \
     && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .upxd; \
     fi \
-    && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \

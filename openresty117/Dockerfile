@@ -196,7 +196,7 @@ RUN set -x \
     && adduser -u 82 -D -S -G www-data www-data || true \
     && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack curl dpkg \
-    && arch=$(dpkg --print-architecture|grep -oE "aarch64|amd64|armhf|arm|ppc64le|x86") \
+    && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && apk add --no-cache logrotate sudo tzdata \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -228,7 +228,6 @@ RUN set -x \
     && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && apk del .upxd; \
     fi \
-    && apk del .pack \
     # 日志目录
     && mkdir -p /usr/local/var/log/nginx/ \
     && chown www-data:www-data -R /usr/local/var/log

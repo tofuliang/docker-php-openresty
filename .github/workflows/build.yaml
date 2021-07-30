@@ -12,17 +12,17 @@ jobs:
       fail-fast: false
       matrix:
         branch: [
+            # php-modern,
             # php80,
             # php74,
-            # php73,
+            php73,
             # php72,
             # php71,
             # php70,
-            php56,
+            # php56,
             # php55,
             # php54,
             # php53,
-            # php-builder,
             # openresty117,
             # openresty119,
           ]
@@ -42,4 +42,28 @@ jobs:
           docker run --rm --privileged tonistiigi/binfmt:latest --install all
           docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master
           docker buildx use multibulider
-          docker buildx build --platform linux/arm -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push
+          if [ "${{ matrix.branch }}" = "php53" ] || [ "${{ matrix.branch }}" = "php54" ];then 
+            docker buildx build --platform linux/amd64 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push
+          else
+            docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push
+          fi
+
+  pack-modern:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build
+        run: |
+          docker run --rm --privileged tonistiigi/binfmt:latest --install all
+          docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master
+          docker buildx use multibulider
+          docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:php-modern php-modern --push
