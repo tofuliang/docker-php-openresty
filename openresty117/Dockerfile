@@ -160,12 +160,12 @@ RUN apk add --no-cache --virtual .build-deps \
     && { find /usr/local -type f -perm +0111 -exec strip --strip-all '{}' + || true; } \
     && { find /usr/local -type f -name "*.so*" -exec strip --strip-all '{}' + || true; } \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    { find /usr/local/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     fi \
     && find /usr/local -type f -name '*.a' -delete && find -type f -name '*.la' -delete \
     && rm -fr /usr/local/include /usr/local/share /usr/local/openresty/openssl/include /usr/local/openresty/pcre/share /usr/local/openresty/pcre/include /usr/local/openresty/luajit/include /usr/local/openresty/pod /usr/local/openresty/site \
@@ -217,15 +217,15 @@ RUN set -x \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && apk del .upxd; \
     fi \
     # 日志目录
