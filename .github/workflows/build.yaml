@@ -12,12 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         branch: [
-            php80,
+#             php80,
             php74,
             php73,
             php72,
             php71,
-            php70,
+#             php70,
             # php56,
             # php55,
             # php54,
