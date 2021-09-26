@@ -9,10 +9,11 @@ FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
 # Docker Build Arguments
+ARG TARGETARCH
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.14"
-ARG RESTY_VERSION="1.19.3.2"
-ARG RESTY_OPENSSL_VERSION="1.1.1k"
+ARG RESTY_VERSION="1.19.9.1"
+ARG RESTY_OPENSSL_VERSION="1.1.1l"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
 ARG RESTY_PCRE_VERSION="8.44"
@@ -123,12 +124,21 @@ RUN apk add --no-cache --virtual .build-deps \
     && curl -s https://raw.githubusercontent.com/openresty/openresty/ed328977028c3ec3033bc25873ee360056e247cd/patches/openssl-1.1.0j-parallel_build_fix.patch | patch -p1 \
     && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
     fi \
-    && ./config \
+    && if [ "q${TARGETARCH}" = "q386" ];then \
+    ./Configure linux-elf \
     no-threads shared zlib -g \
     enable-ssl3 enable-ssl3-method \
     --prefix=/usr/local/openresty/openssl \
     --libdir=lib \
-    -Wl,-rpath,/usr/local/openresty/openssl/lib \
+    -Wl,-rpath,/usr/local/openresty/openssl/lib; \
+    else \
+    ./config \
+    no-threads shared zlib -g \
+    enable-ssl3 enable-ssl3-method \
+    --prefix=/usr/local/openresty/openssl \
+    --libdir=lib \
+    -Wl,-rpath,/usr/local/openresty/openssl/lib; \
+    fi \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install_sw \
     && cd /tmp \
@@ -183,6 +193,7 @@ FROM --platform=$TARGETPLATFORM alpine:3.14
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
+ARG TARGETARCH
 COPY --from=tmp /usr/local /usr/local
 ADD mm /bin/mm
 ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
@@ -238,3 +249,4 @@ EXPOSE 80
 EXPOSE 443
 
 ENTRYPOINT ["/init"]
+
