@@ -228,7 +228,16 @@ RUN set -x \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && if [ "$(command -v upx)q" != "q" ];then \
-    { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
+    { find /usr/local/openresty/luajit/bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/local/openresty/bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/local/openresty/nginx/sbin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -perm +0111 -size -95k -exec upx --best '{}' + || true; } \
+    && { find /usr/local/openresty/luajit/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/openresty/pcre/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/openresty/openssl/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/openresty/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
