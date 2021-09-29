@@ -60,10 +60,18 @@ RUN set -x \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
-    { find /usr/local/bin -size +1024 -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
+    { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    && { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
     else \
     { find /usr/local/bin -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --lzma '{}' + || true; }; \
     fi \
+    && { find /usr/local/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/local/php${BRANCH}/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /usr/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
