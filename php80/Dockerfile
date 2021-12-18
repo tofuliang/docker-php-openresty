@@ -21,9 +21,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.0.13.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.0.13.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="cd976805ec2e9198417651027dfe16854ba2c2c388151ab9d4d268513d52ed52"
+ARG PHP_URL="https://secure.php.net/get/php-8.0.14.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.0.14.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="fbde8247ac200e4de73449d9fefc8b495d323b5be9c10cdb645fb431c91156e3"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -145,9 +145,9 @@ RUN set -x \
     # 使用pecl安装扩展
     && pecl install redis yac yaf xdebug mongodb imagick \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-4.8.3 \
-    && tar xzf /usr/src/swoole-4.8.3.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.8.3 \
+    cd /usr/src && pecl download swoole-4.8.4 \
+    && tar xzf /usr/src/swoole-4.8.4.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.8.4 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable swoole; \
     fi \
