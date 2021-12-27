@@ -1,4 +1,4 @@
-name: Build Images
+name: Build PHP Images
 
 on:
   push:
@@ -12,18 +12,16 @@ jobs:
       fail-fast: false
       matrix:
         branch: [
-#             php80,
-            # php74,
-#             php73,
+              php80,
+              php74,
+              php73,
             # php72,
-#             php71,
-#             php70,
+            # php71,
+            # php70,
             # php56,
             # php55,
             # php54,
             # php53,
-            openresty117,
-            openresty119,
           ]
 
     steps:
