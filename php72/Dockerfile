@@ -32,6 +32,7 @@ COPY docker-php-ext-* /usr/bin/
 ENV PATH="/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbin:${PATH}"
 
 RUN set -x \
+    && apk upgrade --no-cache \
     && mkdir -p $PHP_INI_DIR/conf.d \
     && mkdir -p $PHP_INI_DIR/php-fpm.d \
     && mkdir -p /usr/src \
@@ -227,7 +228,7 @@ RUN set -x \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
-    && { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
+    { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
     else \
     { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --lzma '{}' + || true; }; \
     fi \

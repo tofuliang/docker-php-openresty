@@ -1,9 +1,9 @@
 name: DockerFile Updater
 
 on:
-  push:
-    branches:
-      - master
+  # push:
+  #   branches:
+  #     - master
   watch:
     types: [started]
   schedule:
@@ -26,10 +26,18 @@ jobs:
           git config --global user.name "tofuliang"
       - name: source update
         run: |
-          for b in 80 74 73;do
+          update=0
+          for b in 81 80 74 73;do
           ( cd php${b}; \
           cp ../update.sh update.sh; \
           chmod a+x ./update.sh && ./update.sh $b; \
           rm -fr update.sh )
           done
-          git add . && git commit -m "update" && git push || true
+          git add . && git commit -m "update" && git push && update=1 || true
+          if [ "$update" = "1" ];then
+            curl -v \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
+              https://api.github.com/repos/${{ github.repository }}/dispatches \
+              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":2}}'
+          fi

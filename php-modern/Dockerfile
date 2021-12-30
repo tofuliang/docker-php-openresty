@@ -6,6 +6,11 @@ ARG TARGETARCH
 
 COPY --from=tofuliang/docker-php-openresty:php74 /usr/local/bin /usr/local/bin
 
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/bin /usr/local/php81/bin
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/sbin /usr/local/php81/sbin
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/lib /usr/local/php81/lib
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/etc/php81 /usr/local/etc/php81
+
 COPY --from=tofuliang/docker-php-openresty:php80 /usr/local/php80/bin /usr/local/php80/bin
 COPY --from=tofuliang/docker-php-openresty:php80 /usr/local/php80/sbin /usr/local/php80/sbin
 COPY --from=tofuliang/docker-php-openresty:php80 /usr/local/php80/lib /usr/local/php80/lib
@@ -61,7 +66,7 @@ RUN set -x \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
-    && { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
+    { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
     else \
     { find /usr/local/bin -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --lzma '{}' + || true; }; \
     fi \
@@ -92,6 +97,7 @@ RUN set -x \
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 # fpm
+EXPOSE 9081
 EXPOSE 9080
 EXPOSE 9074
 EXPOSE 9073

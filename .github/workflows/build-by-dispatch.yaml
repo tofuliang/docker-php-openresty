@@ -1,0 +1,86 @@
+name: Build PHP Images
+
+on:
+  repository_dispatch:
+    inputs:
+      branches:
+        description: 'branch to build'
+        required: true
+      build_branches:
+        description: 'branch to build'
+        required: true
+      build_branches_str:
+        description: 'encoded json string of branch to build'
+        required: true
+      next_build_num:
+        description: 'build branch number of next round'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ github.event.client_payload.build_branches }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build ${{ matrix.branch }}
+        run: |
+          echo "Build ${{ matrix.branch }}..."
+          docker run --rm --privileged tonistiigi/binfmt:latest --install all
+          docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master
+          docker buildx use multibulider
+          if [ "${{ matrix.branch }}" = "php-builder" ] || [ "${{ matrix.branch }}" = "php-modern" ];then
+            version=""
+          else
+            version=$(cat ${{ matrix.branch }}/Dockerfile | grep -Eo "PHP_URL.{0,99}php-([0-9]+\.){3}|RESTY_VERSION=\"([0-9\.]+){3,5}\""| grep -Eo "([0-9]+\.?){2,3}[0-9]+")
+          fi
+          if [ "${{ matrix.branch }}" = "php53" ] || [ "${{ matrix.branch }}" = "php54" ];then
+            docker buildx build --platform linux/amd64 -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} --push
+          else
+            if [ "${version}" = "" ];then
+              docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push
+            else
+              docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} --push
+            fi
+          fi
+
+  dispatch:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: dispatch
+        run: |
+          branches='${{ github.event.client_payload.branches }}'
+          build_branches='${{ github.event.client_payload.build_branches_str }}'
+          next_build_num=${{ github.event.client_payload.next_build_num }}
+          left_branches=$(echo $branches|jq -Mc ". - $build_branches")
+          echo "left_branches=$left_branches"
+          next_build_branches=$(echo $left_branches|jq -Mc ".[0:$next_build_num]")
+          echo "next_build_branches=$next_build_branches"
+          echo $(echo $left_branches|jq 'length')
+          if [ $(echo $left_branches|jq 'length') -gt 2 ];then
+            new_next_build_num=2
+          else
+            new_next_build_num=1
+          fi
+
+          if [ $(echo "$next_build_branches"|jq 'length') -gt 0 ];then
+            body="{\"event_type\": \"build\", \"client_payload\": {\"branches\": $(echo "$left_branches"|jq 'tostring'), \"build_branches_str\":$(echo "$next_build_branches"|jq 'tostring'), \"build_branches\":$next_build_branches, \"next_build_num\":$new_next_build_num }}"
+            echo $body
+            curl -v \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
+              https://api.github.com/repos/${{ github.repository }}/dispatches \
+              -d "$body"
+          fi

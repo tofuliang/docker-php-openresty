@@ -1,10 +1,9 @@
-
 # Dockerfile - alpine
 # https://github.com/docker-library/php
 FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder AS build
 
 # Docker Build Arguments
-ARG BRANCH="71"
+ARG BRANCH="81"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 
 ARG TARGETARCH
@@ -16,15 +15,15 @@ ARG TARGETARCH
 # Adds GNU HASH segments to generated executables (this is used if present, and is much faster than sysv hash; in this configuration, sysv hash is also generated)
 # https://github.com/docker-library/php/issues/272
 ARG PHP_EXTRA_CONFIGURE_ARGS="--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data --prefix=/usr/local/php${BRANCH}"
-ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
+ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E"
+ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.1.33.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="657cf6464bac28e9490c59c07a2cf7bb76c200f09cfadf6e44ea64e95fa01021"
+ARG PHP_URL="https://secure.php.net/get/php-8.1.1.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.1.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="33c09d76d0a8bbb5dd930d9dd32e6bfd44e9efcf867563759eb5492c3aff8856"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -80,17 +79,30 @@ RUN set -x \
     # https://github.com/docker-library/php/issues/439
     --with-mhash \
     \
+    # https://github.com/docker-library/php/issues/822
+    --with-pic \
+    \
     # --enable-ftp is included here because ftp_ssl_connect() needs ftp to be compiled statically (see https://github.com/docker-library/php/issues/236)
     --enable-ftp \
     # --enable-mbstring is included here because otherwise there's no way to get pecl to use it properly (see https://github.com/docker-library/php/issues/195)
     --enable-mbstring \
     # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
     --enable-mysqlnd \
+    # https://wiki.php.net/rfc/argon2_password_hash (7.2+)
+    --with-password-argon2 \
+    # https://wiki.php.net/rfc/libsodium
+    --with-sodium=shared \
+    # always build against system sqlite3 (https://github.com/php/php-src/commit/6083a387a81dbbd66d6316a3a12a63f06d5f7109)
+    --with-pdo-sqlite=/usr \
+    --with-sqlite3=/usr \
     \
     --with-curl \
     --with-libedit \
     --with-openssl \
     --with-zlib \
+    \
+    # in PHP 7.4+, the pecl/pear installers are officially deprecated (requiring an explicit "--with-pear")
+    --with-pear \
     \
     # bundled pcre does not support JIT on s390x
     # https://manpages.debian.org/stretch/libpcre3-dev/pcrejit.3.en.html#AVAILABILITY_OF_JIT_SUPPORT
@@ -116,11 +128,10 @@ RUN set -x \
     && { find /usr/local/bin /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec strip --strip-all '{}' + || true; }
 
 RUN set -x \
-    && apk --no-cache add libmcrypt-dev unixodbc unixodbc-dev \
     # 配置GD库,开启更多图片支持
-    && docker-php-ext-configure gd --with-webp-dir --with-jpeg-dir --with-xpm-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
+    && docker-php-ext-configure gd --with-webp --with-jpeg --with-xpm --with-freetype \
     # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif gettext gmp imap ldap mysqli pcntl pdo_mysql pspell shmop snmp soap sockets sysvmsg sysvsem sysvshm tidy xsl zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl gd bcmath bz2 calendar dba exif ffi gettext gmp imap ldap mysqli pcntl pdo_mysql pspell shmop snmp soap sockets sysvmsg sysvsem sysvshm tidy xsl zip \
     # 从源码编译安装支持sasl的memcached扩展
     && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-3.1.5.tgz -o /usr/src/memcached-3.1.5.tgz \
     && tar xzf /usr/src/memcached-3.1.5.tgz -C /usr/src \
@@ -131,16 +142,22 @@ RUN set -x \
     && tar xzf /usr/src/tideways-5.0.4.tar.gz -C /usr/src \
     && cd /usr/src/php-xhprof-extension-5.0.4 \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
+    && docker-php-ext-enable tideways_xhprof \
     # 使用pecl安装扩展
-    && pecl install redis yac yaf xdebug-2.9.8 mongodb-1.11.1 imagick \
+    && pecl install redis yac yaf xdebug mongodb imagick \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-4.5.10 \
-    && tar xzf /usr/src/swoole-4.5.10.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.5.10 \
+    cd /usr/src && pecl download swoole-4.8.5 \
+    && tar xzf /usr/src/swoole-4.8.5.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.8.5 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
-    && docker-php-ext-enable swoole.so; \
+    && docker-php-ext-enable swoole; \
     fi \
-    && docker-php-ext-enable tideways_xhprof.so memcached.so redis.so yac.so yaf.so imagick.so opcache.so mongodb.so \
+    #    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
+    #    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
+    #    && cd /usr/src/yasd-0.3.7 \
+    #    && phpize --clean && phpize && ./configure && make -j`grep -c ^processor /proc/cpuinfo` \
+    #    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/yasd.so" \
+    && docker-php-ext-enable memcached redis yac yaf sodium mongodb imagick opcache.so \
     # strip 所有扩展
     && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec strip --strip-all '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec chmod -x '{}' + || true; }
@@ -180,7 +197,7 @@ FROM --platform=$TARGETPLATFORM alpine:3.14
 
 LABEL maintainer="tofuiang <tofuliang@gmail.com>"
 
-ARG BRANCH="71"
+ARG BRANCH="81"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 
 ARG TARGETARCH
