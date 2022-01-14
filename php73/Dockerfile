@@ -137,9 +137,9 @@ RUN set -x \
     # 使用pecl安装扩展
     && pecl install redis yac yaf xdebug mongodb imagick \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-4.8.5 \
-    && tar xzf /usr/src/swoole-4.8.5.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.8.5 \
+    cd /usr/src && pecl download swoole-4.8.6 \
+    && tar xzf /usr/src/swoole-4.8.6.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.8.6 \
     && phpize && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable swoole; \
     fi \
