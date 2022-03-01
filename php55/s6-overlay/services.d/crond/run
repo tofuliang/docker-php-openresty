@@ -1,2 +1,2 @@
-#!/usr/bin/execlineb -P
+#!/command/execlineb -P
 /usr/sbin/crond -f -L /usr/local/var/log/cron/crond.log

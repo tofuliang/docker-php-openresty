@@ -15,7 +15,6 @@ on:
       next_build_num:
         description: 'build branch number of next round'
         required: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,22 +22,122 @@ jobs:
       fail-fast: false
       matrix:
         branch: ${{ github.event.client_payload.build_branches }}
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PUBKEY: ${{secrets.SSH_PUBKEY}}
+      TUNNEL_HOST: ${{secrets.TUNNEL_HOST}}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-
+      - name: Cleanup
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          mkdir -p /home/runner/.ssh
+          cat <<< ${SSH_PRIVATE_KEY} > /home/runner/.ssh/id_rsa
+          cat <<< ${SSH_PUBKEY} > /home/runner/.ssh/authorized_keys
+          chmod 600 /home/runner/.ssh/id_rsa
+          chmod 600 /home/runner/.ssh/authorized_keys
+          chmod 700 /home/runner/.ssh
+          random_port=$(shuf -i 20000-65000 -n 1)
+          if [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]; then
+              TELEGRAM_LOG="/tmp/telegram.log"
+              SSH_CMD="ssh runner@${TUNNEL_HOST} -p $random_port"
+              MSG="
+              *GitHub Actions - ${{ matrix.branch }} SSH tunnel info:*
+              ⚡ *CLI:*
+              \`${SSH_CMD}\`
+              "
+              echo -e "Sending message to Telegram..."
+              curl -sSX POST "${TELEGRAM_API_URL:-https://api.telegram.org}/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                  -d "disable_web_page_preview=true" \
+                  -d "parse_mode=Markdown" \
+                  -d "chat_id=${TELEGRAM_CHAT_ID}" \
+                  -d "text=${MSG}" >${TELEGRAM_LOG}
+              TELEGRAM_STATUS=$(cat ${TELEGRAM_LOG} | jq -r .ok)
+              if [[ ${TELEGRAM_STATUS} != true ]]; then
+                  echo -e "Telegram message sending failed: $(cat ${TELEGRAM_LOG})"
+              else
+                  echo -e "Telegram message sent successfully!"
+              fi
+          fi
+          screen -dmS ngrok bash -c \
+              "ssh -CNTR $random_port:127.0.0.1:22 -oStrictHostKeyChecking=no -oServerAliveInterval=30 -oServerAliveCountMax=60 -C ubuntu@${TUNNEL_HOST} -v 2>&1"
+          nohup sh -c '
+          sudo -E apt -y install pv
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /etc/mysql \
+            /etc/php
+          sudo -E apt-get -y purge \
+            azure-cli \
+            ghc* \
+            zulu* \
+            hhvm \
+            llvm* \
+            firefox \
+            google* \
+            dotnet* \
+            powershell \
+            openjdk* \
+            mysql* \
+            mono* \
+            php*
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk
+            sudo sysctl vm.swappiness=0
+            ' &
+      - name: restore container
+        run: |
+          cd \
+          && curl -sL https://raw.githubusercontent.com/klever1988/nanopi-openwrt/zstd-bin/zstd | sudo tee /usr/bin/zstd > /dev/null
+          for i in {1..10}
+          do
+            curl -sL --fail https://github.com/tofuliang/docker-php-openresty/releases/download/cache/php.${{ matrix.branch }}.img.zst.0$i || break
+          done | zstdmt -d -o php.img || (truncate -s 12g php.img && mkfs.btrfs -M php.img)
+          LOOP_DEVICE=$(losetup -f) && echo "LOOP_DEVICE=$LOOP_DEVICE" >> $GITHUB_ENV
+          sudo losetup -P --direct-io $LOOP_DEVICE php.img
+          mkdir php && sudo mount -o nossd,compress=zstd $LOOP_DEVICE php
+          if [ -d 'php/.git' ]; then
+            cd php && rm -f zerospace && git config --local user.email "action@github.com" && git config --local user.name "GitHub Action"
+            git fetch && git reset --hard origin/master
+            cd
+          else
+            sudo chown $USER:$(id -gn) php && git clone -b master --single-branch https://github.com/tofuliang/docker-php-openresty php
+            docker rmi -f `docker images -q`
+          fi
+          sudo service docker stop
+          [ ! -d 'php/docker' ] && mkdir -p php/docker && sudo rsync -avz /var/lib/docker/ php/docker
+          [ ! -d 'php/docker.config' ] && mkdir -p php/docker.config && sudo rsync -avz /home/runner/.docker/ php/docker.config
+          nohup sh -c "sudo mv /var/lib/docker /var/lib/docker_ && sudo mkdir -p /var/lib/docker && sudo rm -fr /var/lib/docker_" &
+          mv /home/runner/.docker /home/runner/.docker_ && mkdir /home/runner/.docker && rm -fr /home/runner/.docker_ && sudo mount -o bind /home/runner/php/docker.config /home/runner/.docker
+          if [ ! -f /home/runner/.docker/cli-plugins ];then
+            mkdir -p /home/runner/.docker/cli-plugins
+            while [ ! -f /home/runner/.docker/cli-plugins/docker-buildx ];do
+              curl --output - -fSkL --retry 5 https://github.com/docker$(curl https://github.com/docker/buildx/releases |grep download|grep linux-amd64|grep -oE '/buildx.*linux-amd64'|head -1) > /home/runner/.docker/cli-plugins/docker-buildx
+            done
+            chmod +x /home/runner/.docker/cli-plugins/docker-buildx
+          fi
+          while [ $(mount|grep btrfs|grep var|wc -l) -lt 1 ];do
+            sleep 1;
+            mkdir -p /var/lib/docker || true
+            sudo mount -o bind /home/runner/php/docker /var/lib/docker
+          done
+          sudo service docker start
       - name: Log in to GitHub Docker Registry
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
       - name: Build ${{ matrix.branch }}
         run: |
+          cd;
+          cd php;
           echo "Build ${{ matrix.branch }}..."
-          docker run --rm --privileged tonistiigi/binfmt:latest --install all
-          docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master
+          buildTimeout=0
+          timeOutTimestamp=$(($(date +%s) + 20700))
+          docker run --privileged tonistiigi/binfmt:latest --install all
+          docker buildx create --use --name=multibulider --driver docker-container --driver-opt image=moby/buildkit:master || true
           docker buildx use multibulider
           if [ "${{ matrix.branch }}" = "php-builder" ] || [ "${{ matrix.branch }}" = "php-modern" ];then
             version=""
@@ -46,41 +145,189 @@ jobs:
             version=$(cat ${{ matrix.branch }}/Dockerfile | grep -Eo "PHP_URL.{0,99}php-([0-9]+\.){3}|RESTY_VERSION=\"([0-9\.]+){3,5}\""| grep -Eo "([0-9]+\.?){2,3}[0-9]+")
           fi
           if [ "${{ matrix.branch }}" = "php53" ] || [ "${{ matrix.branch }}" = "php54" ];then
-            docker buildx build --platform linux/amd64 -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} --push
+            if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
+              timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false \
+              --progress=plain --platform linux/amd64 \
+              -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} \
+              --push || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
+            fi
           else
             if [ "${version}" = "" ];then
-              docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} --push
+              # php-builder, php-modern
+              if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
+                timeout $((timeOutTimestamp - $(date +%s))) docker buildx build \
+                --progress=plain --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} \
+                --push && echo "build_timeout_branches=" >> $GITHUB_ENV || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
+              fi
             else
-              docker buildx build --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} --push
+              # php-xx
+              docker buildx use default
+              contextDir=${{ matrix.branch }}
+              allStage=$(cat ${contextDir}/Dockerfile|grep STAGE|tail -1|grep -oE '[0-9]+')
+              manifest=""
+              for arch in linux/amd64 linux/386 linux/arm64 linux/arm/v7;do
+                if [ $buildTimeout -gt 0 ];then
+                  break
+                fi
+                targetArch=$(echo ${arch}|awk -F "/" '{print $2}')
+                archc=$(echo ${arch}|sed 's/\//_/g')
+                stage=$(docker images|grep -oE '\-[0-9]\-'${archc}|tail -1|grep -oE '\-[0-9]\-'|grep -oE '[0-9]+')||true
+                [ "${stage}" = "" ] && stage=0
+                while [ "$allStage" -gt "${stage}" ];do
+                  stage=$((stage + 1))
+                  if [ $(docker images|grep ${contextDir}-${stage}-${archc}|wc -l) -gt 0 ];then
+                    continue;
+                  fi
+                  echo "==========================for loop ${arch} start ${stage}=========================="
+                  (
+                    cd ${contextDir};
+                    sed -n "/### ARG-BEGIN/,/### ARG-END/p" Dockerfile|sed '1d'|sed '$d' > part.arg
+                    if [ "${stage}" = "1" ];then
+                        echo "" > part.from
+                        sed -n "/### STAGE-${stage}-BEGIN/,/### STAGE-${stage}-END/p" Dockerfile|sed '1d'|sed '$d' > part.body
+                    else
+                        echo "FROM --platform=\$TARGETPLATFORM tofuliang/docker-php-openresty:php\${BRANCH}-$((stage -1))-\${ARCHC} AS stage-$((stage -1))" > part.from
+                        sed -n "/### STAGE-${stage}-BEGIN/,/### STAGE-${stage}-END/p" Dockerfile|sed '1d'|sed '$d' > part.body
+                    fi
+                    cat part.arg part.from part.body > Dockerfile-stage && rm part.arg part.from part.body
+                    echo ""
+                    echo "========================== Dockerfile START =========================="
+                    cat Dockerfile-stage
+                    echo "========================== Dockerfile END =========================="
+                    echo ""
+                  )
+                  docker images
+                  if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
+                    if [ $(cat ${contextDir}/Dockerfile-stage|wc -l) -gt 10 ];then
+                      timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
+                      --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${stage}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-stage \
+                      --load || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
+                    fi
+                  fi
+                  echo "==========================for loop ${arch} end ${stage}=========================="
+                done
+                if [ $buildTimeout -eq 0 ];then
+                  if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
+                    (
+                      cd ${contextDir};
+                      sed -n "/### ARG-BEGIN/,/### ARG-END/p" Dockerfile|sed '1d'|sed '$d' > Dockerfile-push
+                      sed -n "/### PUSH-START/,/### PUSH-END/p" Dockerfile|sed '1d'|sed '$d' >> Dockerfile-push
+                      echo "========================== Dockerfile START =========================="
+                      cat Dockerfile-push
+                      echo "========================== Dockerfile END =========================="
+                    )
+                    docker images
+                    timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg TARGETPLATFORM=${arch} --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
+                    --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-push \
+                    --push || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
+                    manifest="${manifest} tofuliang/docker-php-openresty:${contextDir}-${archc}"
+                  fi
+                fi
+              done
+              if [ $buildTimeout -eq 0 ];then
+                if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
+                  echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV
+                  docker manifest rm tofuliang/docker-php-openresty:${contextDir} || true
+                  docker manifest rm tofuliang/docker-php-openresty:${contextDir}-${version} || true
+                  docker manifest create tofuliang/docker-php-openresty:${contextDir} ${manifest}
+                  docker manifest create tofuliang/docker-php-openresty:${contextDir}-${version} ${manifest}
+                  docker manifest push tofuliang/docker-php-openresty:${contextDir}
+                  docker manifest push tofuliang/docker-php-openresty:${contextDir}-${version}
+
+                  USERNAME="${{ secrets.DOCKER_HUB_USERNAME }}"
+                  PASSWORD="${{ secrets.DOCKER_HUB_PASSWORD }}"
+                  ORGANIZATION="tofuliang"
+                  IMAGE="docker-php-openresty"
+                  TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\"}" "https://hub.docker.com/v2/users/login/" | jq -r .token)
+                  for arch in linux/amd64 linux/386 linux/arm64 linux/arm/v7;do
+                    archc=$(echo ${arch}|sed 's/\//_/g')
+                    curl "https://hub.docker.com/v2/repositories/${ORGANIZATION}/${IMAGE}/tags/${contextDir}-${archc}/" \
+                    -X DELETE \
+                    -H "Authorization: JWT ${TOKEN}"
+                  done
+                  for i in `seq 1 20`;do docker rmi $i:latest||true;done
+                  i=1;for img in $(docker images -q|sort|uniq);do docker tag $img $i;i=$(($i+1));done
+                  for img in $(docker images|grep php|awk '{print $1":"$2}');do docker rmi $img||true;done
+                  curl -s https://raw.githubusercontent.com/ZZROTDesign/docker-clean/v2.0.4/docker-clean |
+                  sudo tee /usr/local/bin/docker-clean > /dev/null && \
+                  sudo chmod +x /usr/local/bin/docker-clean
+                  /usr/local/bin/docker-clean run
+                  docker builder prune --keep-storage 2G -f
+                  echo "build_timeout_branches=" >> $GITHUB_ENV
+                fi
+              fi
             fi
           fi
-
+      - name: save container
+        run: |
+          cd;
+          docker images
+          docker logout || true
+          sudo service docker stop
+          sleep 30
+          sudo umount /home/runner/.docker
+          sudo umount /var/lib/docker
+          sudo mount -o remount,compress=no,nodatacow,nodatasum php
+          sudo bash -c "cd /home/runner/php/; pv /dev/zero > zerospace || true; sync; rm -f zerospace;"
+          sleep 10
+          sudo umount php || true
+          sudo losetup -d $LOOP_DEVICE || true
+          export AUTH="Authorization: Token ${{ secrets.REPO_TOKEN }}"
+          export cache_path='github.com/repos/tofuliang/docker-php-openresty/releases'
+          export cache_repo_id='58420692'
+          ret=$(curl -sH "$AUTH" "https://api.$cache_path/tags/cache")
+          echo $ret | jq -r '.assets[] | select(.name | contains ("'${{ matrix.branch }}'.img")).id' | \
+          xargs -n1 -i curl -X DELETE -H "$AUTH" "https://api.$cache_path/assets/{}"
+          zstdmt -c --long php.img | split --numeric=1 -b 2000m - php.${{ matrix.branch }}.img.zst.
+          ls *img.zst* | parallel --wc 'while true; do curl -T {} -H "$AUTH" -H "Content-Type: application/octet-stream" "https://uploads.$cache_path/$cache_repo_id/assets?name={}" && break || true; done'
+      - name: set_build_timeout_branches
+        run: |
+          echo "${{ env.build_timeout_branches }}" > build_timeout_${{ matrix.branch }}.txt
+      - name: Upload set_build_timeout_branches
+        uses: actions/upload-artifact@v2
+        with:
+          name: build_timeout_${{ matrix.branch }}
+          path: build_timeout_${{ matrix.branch }}.txt
+      - name: SSH 连接到 Actions
+        uses: P3TERX/ssh2actions@main
+        if: ${{ failure() }}
   dispatch:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Download build_timeout_branches
+        uses: actions/download-artifact@v2
+        with:
+          path: build_timeout_branches
       - name: dispatch
         run: |
+          build_timeout_branches=$(cat build_timeout_branches/build_timeout_php*/*.txt|xargs)
           branches='${{ github.event.client_payload.branches }}'
           build_branches='${{ github.event.client_payload.build_branches_str }}'
-          next_build_num=${{ github.event.client_payload.next_build_num }}
-          left_branches=$(echo $branches|jq -Mc ". - $build_branches")
+          if [ $(echo ${build_timeout_branches}|jq -McR 'split(" ")'|jq 'length') -gt 0 ];then
+            next_build_num=$(echo $build_branches|jq 'length')
+          else
+            next_build_num=${{ github.event.client_payload.next_build_num }}
+          fi
+          left_branches=$(echo $branches|jq -Mc "$(echo ${build_timeout_branches}|jq -McR 'split(" ")') + ( . - $build_branches) ")
           echo "left_branches=$left_branches"
-          next_build_branches=$(echo $left_branches|jq -Mc ".[0:$next_build_num]")
+          left_num=$(echo $left_branches|jq 'length')
+          if [ $next_build_num -ge $left_num ];then
+            next_build_branches=$(echo $left_branches|jq -Mc ".[0:$(($left_num-1))]")
+          else
+            next_build_branches=$(echo $left_branches|jq -Mc ".[0:$next_build_num]")
+          fi
           echo "next_build_branches=$next_build_branches"
           echo $(echo $left_branches|jq 'length')
-          if [ $(echo $left_branches|jq 'length') -gt 2 ];then
-            new_next_build_num=2
-          else
-            new_next_build_num=1
-          fi
-
           if [ $(echo "$next_build_branches"|jq 'length') -gt 0 ];then
-            body="{\"event_type\": \"build\", \"client_payload\": {\"branches\": $(echo "$left_branches"|jq 'tostring'), \"build_branches_str\":$(echo "$next_build_branches"|jq 'tostring'), \"build_branches\":$next_build_branches, \"next_build_num\":$new_next_build_num }}"
+            body="{\"event_type\": \"build\", \"client_payload\": {\"branches\": $(echo "$left_branches"|jq 'tostring'), \"build_branches_str\":$(echo "$next_build_branches"|jq 'tostring'), \"build_branches\":$next_build_branches, \"next_build_num\":$next_build_num }}"
             echo $body
             curl -v \
               -H "Accept: application/vnd.github.v3+json" \
-              -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
+              -H "Authorization: Token ${{ secrets.REPO_TOKEN }}" \
               https://api.github.com/repos/${{ github.repository }}/dispatches \
               -d "$body"
           fi
+      - name: SSH 连接到 Actions
+        uses: P3TERX/ssh2actions@main
+        if: ${{ failure() }}

@@ -6,7 +6,7 @@ ARG RESTY_IMAGE_TAG="3.14"
 
 FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 # Docker Build Arguments
 ARG TARGETARCH
@@ -184,14 +184,14 @@ RUN apk add --no-cache --virtual .build-deps \
     && tar cvf /tmp/pack.tar /usr/local
 
 FROM --platform=$TARGETPLATFORM alpine:3.14 as tmp
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 COPY --from=build /tmp/pack.tar /tmp/pack.tar
 RUN tar xf /tmp/pack.tar -C /
 
 FROM --platform=$TARGETPLATFORM alpine:3.14
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 ARG TARGETARCH
 COPY --from=tmp /usr/local /usr/local

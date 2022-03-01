@@ -1,6 +1,6 @@
 FROM --platform=$TARGETPLATFORM alpine:3.14
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 ARG TARGETARCH
 
@@ -41,13 +41,34 @@ COPY --from=tofuliang/docker-php-openresty:php70 /usr/local/php70/sbin /usr/loca
 COPY --from=tofuliang/docker-php-openresty:php70 /usr/local/php70/lib /usr/local/php70/lib
 COPY --from=tofuliang/docker-php-openresty:php70 /usr/local/etc/php70 /usr/local/etc/php70
 
+ADD s6/cont-init.d /etc/cont-init.d/
+ADD s6/s6-overlay /etc/s6-overlay
+
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && for i in 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
-    && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
-    && apk add --no-cache --virtual .pack dpkg \
+    && for i in 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
+    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
     && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
+    && arch=$TARGETARCH \
+    && best="--best" \
+    && lzma="--lzma" \
+    && if [ "q$arch" = "q386" ];then arch="i686";upxarch="i386"; fi \
+    && if [ "q$arch" = "qamd64" ];then arch="x86_64";upxarch="amd64"; fi \
+    && if [ "q$arch" = "qarm64" ];then arch="aarch64";upxarch="arm64";best="";lzma=""; fi \
+    && if [ "q$arch" = "qarm" ];then arch="armhf";upxarch="arm";best="";lzma=""; fi \
+    && while [ ! -f /usr/bin/upx ];do \
+    echo "getting upx package ..." \
+    && mkdir -p /tmp/upxd || true \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
+    done \
+    && while [ ! -f /upx_amd64.core ];do \
+    echo "getting amd64 upx package ..." \
+    && mkdir -p /tmp/upxamd64 || true \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
+    && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
+    done \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
     fi \
@@ -59,10 +80,13 @@ RUN set -x \
     | grep so:l \
     | grep -v libc.musl \
     )" \
-    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
-    && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && while [ ! -f /init ];do \
+    curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    done \
+    && while [ ! -f /command/s6-cat ];do \
+    curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    done \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
@@ -84,15 +108,18 @@ RUN set -x \
     && { find /usr/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && apk del .upxd; \
     fi \
+    && apk del libc-utils || true \
+    && rm -fr /usr/bin/upx || true \
+    && rm -fr /*.core \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
     && mkdir -p /usr/local/var/log/php_errors/ \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
     && mkdir -p /usr/local/var/log/cron \
-    && chown www-data:www-data -R /usr/local/var/log
+    && chown www-data:www-data -R /usr/local/var/log \
+    && chmod a+x /etc/cont-init.d/*
 
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
@@ -104,9 +131,5 @@ EXPOSE 9073
 EXPOSE 9072
 EXPOSE 9071
 EXPOSE 9070
-
-ADD s6-overlay/fix-attrs.d /etc/fix-attrs.d/
-ADD s6-overlay/cont-init.d /etc/cont-init.d/
-ADD s6-overlay/services.d /etc/services.d/
 
 ENTRYPOINT ["/init"]

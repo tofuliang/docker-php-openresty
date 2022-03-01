@@ -2,17 +2,80 @@ name: DEBUG
 
 on:
   watch:
-      types: [started]
+    types: [started]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PUBKEY: ${{secrets.SSH_PUBKEY}}
+      TUNNEL_HOST: ${{secrets.TUNNEL_HOST}}
 
     steps:
+      - name: Cleanup
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          mkdir -p /home/runner/.ssh
+          cat <<< ${SSH_PRIVATE_KEY} > /home/runner/.ssh/id_rsa
+          cat <<< ${SSH_PUBKEY} > /home/runner/.ssh/authorized_keys
+          chmod 600 /home/runner/.ssh/id_rsa
+          chmod 600 /home/runner/.ssh/authorized_keys
+          chmod 700 /home/runner/.ssh
+          random_port=$(shuf -i 20000-65000 -n 1)
+          if [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]; then
+              TELEGRAM_LOG="/tmp/telegram.log"
+              SSH_CMD="ssh runner@${TUNNEL_HOST} -p $random_port"
+              MSG="
+              *GitHub Actions - debug SSH tunnel info:*
+              ⚡ *CLI:*
+              \`${SSH_CMD}\`
+              "
+              echo -e "Sending message to Telegram..."
+              curl -sSX POST "${TELEGRAM_API_URL:-https://api.telegram.org}/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                  -d "disable_web_page_preview=true" \
+                  -d "parse_mode=Markdown" \
+                  -d "chat_id=${TELEGRAM_CHAT_ID}" \
+                  -d "text=${MSG}" >${TELEGRAM_LOG}
+              TELEGRAM_STATUS=$(cat ${TELEGRAM_LOG} | jq -r .ok)
+              if [[ ${TELEGRAM_STATUS} != true ]]; then
+                  echo -e "Telegram message sending failed: $(cat ${TELEGRAM_LOG})"
+              else
+                  echo -e "Telegram message sent successfully!"
+              fi
+          fi
+          screen -dmS ngrok bash -c \
+              "ssh -CNTR $random_port:127.0.0.1:22 -oStrictHostKeyChecking=no -oServerAliveInterval=30 -oServerAliveCountMax=60 -C ubuntu@${TUNNEL_HOST} -v 2>&1"
+          nohup sh -c '
+          sudo -E apt -y install pv
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /etc/mysql \
+            /etc/php
+          sudo -E apt-get -y purge \
+            azure-cli \
+            ghc* \
+            zulu* \
+            hhvm \
+            llvm* \
+            firefox \
+            google* \
+            dotnet* \
+            powershell \
+            openjdk* \
+            mysql* \
+            mono* \
+            php*
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk
+            sudo sysctl vm.swappiness=0
+            ' &
       - uses: actions/checkout@v2
-
       - name: SSH 连接到 Actions
         uses: P3TERX/ssh2actions@main
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}    
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

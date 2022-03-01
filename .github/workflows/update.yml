@@ -12,6 +12,7 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -39,5 +40,5 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
               https://api.github.com/repos/${{ github.repository }}/dispatches \
-              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":2}}'
+              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
           fi

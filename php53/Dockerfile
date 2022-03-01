@@ -2,7 +2,7 @@
 # https://github.com/docker-library/php
 FROM alpine:3.4 AS build
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 # Docker Build Arguments
 ARG BRANCH="53"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
@@ -235,7 +235,7 @@ RUN set -x \
     && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec chmod -x '{}' + || true; }
 RUN set -x \
     # 安装composer
-    && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
+    && curl -fSkL --retry 5 https://install.phpcomposer.com/installer -o composer-setup.php \
     && php composer-setup.php --1 --filename=composer1 --install-dir=/usr/local/bin \
     && php composer-setup.php \
     && php -r "unlink('composer-setup.php');" \
@@ -259,7 +259,7 @@ RUN set -x \
 
 FROM alpine:3.4 AS tmp
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 COPY --from=build /tmp/pack.tar /tmp/pack.tar
 
@@ -267,7 +267,7 @@ RUN tar xf /tmp/pack.tar -C /
 
 FROM alpine:3.4
 
-LABEL maintainer="tofuiang <tofuliang@gmail.com>"
+LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 ARG BRANCH="53"
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
@@ -314,8 +314,8 @@ RUN set -x \
     fi \
     && { find /usr/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /bin -type -size -95k f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /sbin -type -size -95k f -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /bin -type f -size -95k -perm +0111 -exec upx --best '{}' + || true; } \
+    && { find /sbin -type f -size -95k -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
@@ -328,7 +328,7 @@ RUN set -x \
     && mkdir -p /usr/local/var/log/php_slow/ \
     && mkdir -p /usr/local/var/log/nginx/ \
     && chown www-data:www-data -R /usr/local/var/log \
-    && echo "exec /usr/local/php${BRANCH}/sbin/php-fpm" >> /etc/services.d/php-fpm/run
+    && echo "/usr/local/php${BRANCH}/sbin/php-fpm" >> /etc/services.d/php-fpm/run
 
 # Add additional binaries into PATH for convenience
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
