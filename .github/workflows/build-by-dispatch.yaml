@@ -97,7 +97,9 @@ jobs:
           done | zstdmt -d -o php.img || (truncate -s 12g php.img && mkfs.btrfs -M php.img)
           LOOP_DEVICE=$(losetup -f) && echo "LOOP_DEVICE=$LOOP_DEVICE" >> $GITHUB_ENV
           sudo losetup -P --direct-io $LOOP_DEVICE php.img
-          mkdir php && sudo mount -o nossd,compress=zstd $LOOP_DEVICE php
+          mkdir php && sudo mount -o nossd,compress=zstd $LOOP_DEVICE php || (sudo losetup -d $LOOP_DEVICE;rm php.img && \
+          truncate -s 12g php.img && mkfs.btrfs -M php.img && sudo losetup -P --direct-io $LOOP_DEVICE php.img && \
+          sudo mount -o nossd,compress=zstd $LOOP_DEVICE php)
           if [ -d 'php/.git' ]; then
             cd php && rm -f zerospace && git config --local user.email "action@github.com" && git config --local user.name "GitHub Action"
             git fetch && git reset --hard origin/master
