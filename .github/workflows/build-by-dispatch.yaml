@@ -315,6 +315,7 @@ jobs:
           echo "left_branches=$left_branches"
           left_num=$(echo $left_branches|jq 'length')
           if [ $next_build_num -ge $left_num ];then
+            [ $left_num -eq 1 ] && left_num=2
             next_build_branches=$(echo $left_branches|jq -Mc ".[0:$(($left_num-1))]")
           else
             next_build_branches=$(echo $left_branches|jq -Mc ".[0:$next_build_num]")
