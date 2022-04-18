@@ -254,7 +254,7 @@ jobs:
                   sudo tee /usr/local/bin/docker-clean > /dev/null && \
                   sudo chmod +x /usr/local/bin/docker-clean
                   /usr/local/bin/docker-clean run
-                  docker builder prune --keep-storage 2G -f
+                  docker builder prune --keep-storage 8G -f
                   echo "build_timeout_branches=" >> $GITHUB_ENV
                 fi
               fi
