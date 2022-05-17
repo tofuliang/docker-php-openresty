@@ -1,8 +1,8 @@
 name: DEBUG
 
 on:
-  watch:
-    types: [started]
+  workflow_dispatch:
+
 
 jobs:
   build:
