@@ -367,14 +367,21 @@ RUN set -x && echo $TARGETARCH \
     | grep -v libc.musl \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
+    && s6ver=$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1|grep -oE "v([1-9]\.?)+") \
     && while [ ! -f /init ];do \
-    echo "getting s6-overlay init ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    echo "getting s6-overlay-noarch ..." \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
-    echo "getting s6-overlay package ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    echo "getting s6-overlay-${arch} ..." \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-${arch}.tar.xz| tar xJf - -C /; \
     done \
+    && echo "getting s6-overlay-symlinks-noarch ..." \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-symlinks-noarch.tar.xz| tar xJf - -C / \
+    && echo "getting s6-overlay-symlinks-arch ..." \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-symlinks-arch.tar.xz| tar xJf - -C / \
+    && echo "getting syslogd-overlay-noarch ..." \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/syslogd-overlay-noarch.tar.xz| tar xJf - -C / \
     && if [ "$(command -v upx)q" != "q" ] && [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size -95k -type f -perm +0111 -exec upx ${best} '{}' + || true; }; \

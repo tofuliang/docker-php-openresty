@@ -94,11 +94,11 @@ jobs:
           for i in {1..10}
           do
             curl -sL --fail https://github.com/tofuliang/docker-php-openresty/releases/download/cache/php.${{ matrix.branch }}.img.zst.0$i || break
-          done | zstdmt -d -o php.img || (truncate -s 12g php.img && mkfs.btrfs -M php.img)
+          done | zstdmt -d -o php.img || (truncate -s 25g php.img && mkfs.btrfs -M php.img)
           LOOP_DEVICE=$(losetup -f) && echo "LOOP_DEVICE=$LOOP_DEVICE" >> $GITHUB_ENV
           sudo losetup -P --direct-io $LOOP_DEVICE php.img
           mkdir php && sudo mount -o nossd,compress=zstd $LOOP_DEVICE php || (sudo losetup -d $LOOP_DEVICE;rm php.img && \
-          truncate -s 12g php.img && mkfs.btrfs -M php.img && sudo losetup -P --direct-io $LOOP_DEVICE php.img && \
+          truncate -s 25g php.img && mkfs.btrfs -M php.img && sudo losetup -P --direct-io $LOOP_DEVICE php.img && \
           sudo mount -o nossd,compress=zstd $LOOP_DEVICE php)
           if [ -d 'php/.git' ]; then
             cd php && rm -f zerospace && git config --local user.email "action@github.com" && git config --local user.name "GitHub Action"
@@ -254,7 +254,7 @@ jobs:
                   sudo tee /usr/local/bin/docker-clean > /dev/null && \
                   sudo chmod +x /usr/local/bin/docker-clean
                   /usr/local/bin/docker-clean run
-                  docker builder prune --keep-storage 8G -f
+                  docker builder prune --keep-storage 20G -f
                   echo "build_timeout_branches=" >> $GITHUB_ENV
                 fi
               fi
