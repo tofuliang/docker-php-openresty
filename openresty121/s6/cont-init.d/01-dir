@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mkdir -p /usr/local/var/log/nginx
+mkdir -p /usr/local/var/log/cron

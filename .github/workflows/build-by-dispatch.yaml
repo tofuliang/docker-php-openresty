@@ -43,7 +43,7 @@ jobs:
           random_port=$(shuf -i 20000-65000 -n 1)
           if [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]; then
               TELEGRAM_LOG="/tmp/telegram.log"
-              SSH_CMD="ssh runner@${TUNNEL_HOST} -p $random_port"
+              SSH_CMD="ssh runner@127.0.0.1 -p $random_port"
               MSG="
               *GitHub Actions - ${{ matrix.branch }} SSH tunnel info:*
               ⚡ *CLI:*

