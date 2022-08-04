@@ -24,7 +24,7 @@ jobs:
       - name: source update
         run: |
           update=0
-          for b in 81 80 74 73;do
+          for b in 81 80 74;do
           ( cd php${b}; \
           cp ../update.sh update.sh; \
           chmod a+x ./update.sh && ./update.sh $b; \

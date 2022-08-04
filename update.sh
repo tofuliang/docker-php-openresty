@@ -58,7 +58,9 @@ fi
 
 
 LOCAL_SWOOLE_VER=$(cat Dockerfile | grep -Eo " download swoole-([0-9]{1,3}\.?){3}"|grep -Eo "([0-9]{1,3}\.?){3}")
-
+if [ "$LOCAL_SWOOLE_VER" = "4.8.11" ];then
+  exit 0
+fi
 REMOTE_SWOOLE_INFO=`curl -ks https://pecl.php.net/package/swoole |tr -d "\n" `
 #REMOTE_SWOOLE_INFO=$(cat swoole.log)
 
