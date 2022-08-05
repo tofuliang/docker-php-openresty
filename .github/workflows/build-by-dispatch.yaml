@@ -157,9 +157,23 @@ jobs:
             if [ "${version}" = "" ];then
               # php-builder, php-modern
               if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
-                timeout $((timeOutTimestamp - $(date +%s))) docker buildx build \
-                --progress=plain --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} \
-                --push && echo "build_timeout_branches=" >> $GITHUB_ENV || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
+                build=1
+                if [ "${{ matrix.branch }}" = "php-builder" ];then
+                  build=0
+                  docker pull tofuliang/docker-php-openresty:php-builder
+                  lastMd5=$(docker run tofuliang/docker-php-openresty:php-builder apk info|sort -n|tr -d "\n"|md5sum|cut -c 1-32)
+                  docker buildx build --no-cache --load --platform linux/amd64 -t tofuliang/docker-php-openresty:php-builder_now php-builder
+                  newMd5=$(docker run tofuliang/docker-php-openresty:php-builder_now apk info|sort -n|tr -d "\n"|md5sum|cut -c 1-32)
+                  if [ "$lastMd5" != "$newMd5" ];then
+                    build=1
+                  fi
+                fi
+
+                if [ "$build" = "1" ];then
+                  timeout $((timeOutTimestamp - $(date +%s))) docker buildx build \
+                  --progress=plain --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} \
+                  --push && echo "build_timeout_branches=" >> $GITHUB_ENV || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
+                fi
               fi
             else
               # php-xx

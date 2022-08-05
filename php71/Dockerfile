@@ -41,7 +41,6 @@ ARG JOBS=2
 ENV PATH="/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbin:${PATH}"
 
 RUN set -x && echo $TARGETARCH \
-    && apk upgrade --no-cache \
     && mkdir -p $PHP_INI_DIR/conf.d \
     && mkdir -p $PHP_INI_DIR/php-fpm.d \
     && mkdir -p /usr/src \
