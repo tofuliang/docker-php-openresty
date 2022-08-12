@@ -166,6 +166,9 @@ jobs:
                   newMd5=$(docker run tofuliang/docker-php-openresty:php-builder_now apk info|sort -n|tr -d "\n"|md5sum|cut -c 1-32)
                   if [ "$lastMd5" != "$newMd5" ];then
                     build=1
+                    echo "rebuild php-builder"
+                  else
+                    echo "no need to rebuild php-builder"
                   fi
                 fi
 
