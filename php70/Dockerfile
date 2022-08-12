@@ -315,7 +315,7 @@ RUN set -x && echo $TARGETARCH \
     && adduser -u 82 -D -S -G www-data www-data || true \
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv \
     && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
-    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
+    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl \
     && arch=$TARGETARCH \
     && best="--best" \
     && lzma="--lzma" \

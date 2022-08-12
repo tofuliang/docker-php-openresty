@@ -48,7 +48,7 @@ RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
     && for i in 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
-    && apk add --no-cache logrotate sudo tzdata git busybox-extras tar xz curl \
+    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl \
     && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
     && arch=$TARGETARCH \
     && best="--best" \

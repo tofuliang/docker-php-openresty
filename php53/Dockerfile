@@ -301,7 +301,7 @@ RUN set -x \
     | grep so:l \
     | grep -v libc.musl \
     )" \
-    && apk add --no-cache logrotate sudo tzdata git tar xz curl \
+    && apk add --no-cache logrotate sudo tzdata git openssh-client tar xz curl \
     && apk add --no-cache $runDeps \
     && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
