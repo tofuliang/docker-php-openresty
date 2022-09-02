@@ -29,9 +29,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.1.9.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.9.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="53477e73e6254dc942b68913a58d815ffdbf6946baf61a1f8ef854de524c27bf"
+ARG PHP_URL="https://secure.php.net/get/php-8.1.10.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.10.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="90e7120c77ee83630e6ac928d23bc6396603d62d83a3cf5df8a450d2e3070162"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
