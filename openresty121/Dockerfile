@@ -41,12 +41,9 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-http_sub_module \
     --with-http_v2_module \
     --with-http_xslt_module=dynamic \
-    --with-ipv6 \
     --with-http_iconv_module \
     --with-mail \
     --with-mail_ssl_module \
-    --with-md5-asm \
-    --with-sha1-asm \
     --with-http_degradation_module \
     --with-stream \
     --with-stream_ssl_module \
@@ -56,6 +53,7 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-threads \
     --add-module=/tmp/nginx-dav-ext-module-3.0.0/ \
     --add-module=/tmp/ngx_http_proxy_connect_module-0.0.2/ \
+    --add-module=/tmp/ngx_brotli/ \
     "
 ARG RESTY_CONFIG_OPTIONS_MORE=""
 ARG RESTY_LUAJIT_OPTIONS="--with-luajit-xcflags='-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'"
@@ -106,6 +104,7 @@ RUN apk add --no-cache --virtual .build-deps \
     ${RESTY_ADD_PACKAGE_BUILDDEPS} \
     && apk add --no-cache \
     gd \
+    git \
     geoip \
     libgcc \
     libxslt \
@@ -116,6 +115,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/archive/refs/tags/v0.0.2.tar.gz |tar xzf - -C /tmp \
     && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/raw/master/patch/proxy_connect_rewrite_102101.patch > /tmp/ngx_http_proxy_connect_module-0.0.2/patch/proxy_connect_rewrite_102101.patch \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v3.0.0.tar.gz |tar xzf - -C /tmp \
+    && git clone --depth=1 https://github.com/google/ngx_brotli /tmp/ngx_brotli && cd /tmp/ngx_brotli && git submodule update --init \
     && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
     && cd /tmp \
     && curl -fSkL --retry 5 "${RESTY_OPENSSL_URL_BASE}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz" -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
@@ -218,7 +218,7 @@ RUN set -x \
     && if [ "q$arch" = "qamd64" ];then arch="x86_64";upxarch="amd64"; fi \
     && if [ "q$arch" = "qarm64" ];then arch="aarch64";upxarch="arm64";best="";lzma=""; fi \
     && if [ "q$arch" = "qarm" ];then arch="armhf";upxarch="arm";best="";lzma=""; fi \
-    && s6ver=$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1|grep -oE "v([1-9]\.?)+") \
+    && s6ver=$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep aarch64|grep -oE '/just.*xz'|head -1|grep -oE "v([1-9]\.?)+") \
     && while [ ! -f /init ];do \
     echo "getting s6-overlay-noarch ..." \
     && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
