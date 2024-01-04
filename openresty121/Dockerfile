@@ -218,21 +218,14 @@ RUN set -x \
     && if [ "q$arch" = "qamd64" ];then arch="x86_64";upxarch="amd64"; fi \
     && if [ "q$arch" = "qarm64" ];then arch="aarch64";upxarch="arm64";best="";lzma=""; fi \
     && if [ "q$arch" = "qarm" ];then arch="armhf";upxarch="arm";best="";lzma=""; fi \
-    && s6ver=$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep aarch64|grep -oE '/just.*xz'|head -1|grep -oE "v([1-9]\.?)+") \
     && while [ ! -f /init ];do \
-    echo "getting s6-overlay-noarch ..." \
-    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
+    echo "getting s6-overlay init ..." \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
-    echo "getting s6-overlay-${arch} ..." \
-    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-${arch}.tar.xz| tar xJf - -C /; \
+    echo "getting s6-overlay package ..." \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
-    && echo "getting s6-overlay-symlinks-noarch ..." \
-    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-symlinks-noarch.tar.xz| tar xJf - -C / \
-    && echo "getting s6-overlay-symlinks-arch ..." \
-    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/s6-overlay-symlinks-arch.tar.xz| tar xJf - -C / \
-    && echo "getting syslogd-overlay-noarch ..." \
-    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/${s6ver}/syslogd-overlay-noarch.tar.xz| tar xJf - -C / \
     && apk add --no-cache logrotate sudo tzdata \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \

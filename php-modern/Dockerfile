@@ -6,6 +6,16 @@ ARG TARGETARCH
 
 COPY --from=tofuliang/docker-php-openresty:php74 /usr/local/bin /usr/local/bin
 
+COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/bin /usr/local/php83/bin
+COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/sbin /usr/local/php83/sbin
+COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/lib /usr/local/php83/lib
+COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/etc/php83 /usr/local/etc/php83
+
+COPY --from=tofuliang/docker-php-openresty:php82 /usr/local/php82/bin /usr/local/php82/bin
+COPY --from=tofuliang/docker-php-openresty:php82 /usr/local/php82/sbin /usr/local/php82/sbin
+COPY --from=tofuliang/docker-php-openresty:php82 /usr/local/php82/lib /usr/local/php82/lib
+COPY --from=tofuliang/docker-php-openresty:php82 /usr/local/etc/php82 /usr/local/etc/php82
+
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/bin /usr/local/php81/bin
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/sbin /usr/local/php81/sbin
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/lib /usr/local/php81/lib
@@ -59,14 +69,16 @@ RUN set -x \
     && if [ "q$arch" = "qarm" ];then arch="armhf";upxarch="arm";best="";lzma=""; fi \
     && while [ ! -f /usr/bin/upx ];do \
     echo "getting upx package ..." \
+    && sleep 3 \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
     done \
     && while [ ! -f /upx_amd64.core ];do \
     echo "getting amd64 upx package ..." \
+    && sleep 3 \
     && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
     && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -82,10 +94,10 @@ RUN set -x \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && while [ ! -f /init ];do \
-    curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
-    curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
@@ -124,6 +136,8 @@ RUN set -x \
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 # fpm
+EXPOSE 9083
+EXPOSE 9082
 EXPOSE 9081
 EXPOSE 9080
 EXPOSE 9074

@@ -219,8 +219,6 @@ ARG JOBS=2
 # 使用pecl安装扩展
 ARG MAKE="make -j$JOBS"
 RUN set -x && echo $TARGETARCH \
-    && pecl install grpc >> ${LOG_FILE} 2>&1
-RUN set -x && echo $TARGETARCH \
     && pecl install redis >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install yac >> ${LOG_FILE} 2>&1
@@ -233,10 +231,19 @@ RUN set -x && echo $TARGETARCH \
 RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
-    && if [ "q$TARGETARCH" != "q386" ];then \
+    && if [ "q$TARGETARCH" = "qamd64" ] || [ "q$TARGETARCH" = "qarm64" ] ;then \
     cd /usr/src && pecl download swoole-5.1.1 \
     && tar xzf /usr/src/swoole-5.1.1.tgz -C /usr/src \
     && cd /usr/src/swoole-5.1.1 \
+    && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
+    && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
+    && docker-php-ext-enable swoole; \
+    fi
+RUN set -x && echo $TARGETARCH \
+    && if [ "q$TARGETARCH" = "qarm" ] ;then \
+    cd /usr/src && pecl download swoole-5.0.3 \
+    && tar xzf /usr/src/swoole-5.0.3.tgz -C /usr/src \
+    && cd /usr/src/swoole-5.0.3 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
@@ -246,6 +253,8 @@ RUN set -x && echo $TARGETARCH \
 #    && cd /usr/src/yasd-0.3.7 \
 #    && phpize --clean && phpize && ./configure && make -j$JOBS \
 #    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/yasd.so" \
+RUN set -x && echo $TARGETARCH \
+    && pecl install grpc >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && docker-php-ext-enable grpc memcached redis yac yaf sodium mongodb imagick opcache.so \
     # strip 所有扩展
@@ -280,14 +289,16 @@ RUN set -x && echo $TARGETARCH \
     && if [ "q$arch" = "qarm" ];then upxarch="arm"; fi \
     && while [ ! -f /usr/bin/upx ];do \
     echo "getting upx package ..." \
+    && sleep 3 \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
     done \
     && while [ ! -f /upx_amd64.core ];do \
     echo "getting amd64 upx package ..." \
+    && sleep 3 \
     && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
     && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -345,13 +356,14 @@ RUN set -x && echo $TARGETARCH \
     && while [ ! -f /usr/bin/upx ];do \
     echo "getting upx package ..." \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
     done \
     && while [ ! -f /upx_amd64.core ];do \
     echo "getting amd64 upx package ..." \
+    && sleep 3 \
     && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx.*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
     && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -368,11 +380,11 @@ RUN set -x && echo $TARGETARCH \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && while [ ! -f /init ];do \
     echo "getting s6-overlay init ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
     echo "getting s6-overlay package ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/just-containers/s6-overlay/releases |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
     done \
     && if [ "$(command -v upx)q" != "q" ] && [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
