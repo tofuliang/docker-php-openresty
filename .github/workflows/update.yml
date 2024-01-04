@@ -24,7 +24,7 @@ jobs:
       - name: source update
         run: |
           update=0
-          for b in 81 80 74;do
+          for b in 83 82 81 80 74;do
           ( cd php${b}; \
           cp ../update.sh update.sh; \
           chmod a+x ./update.sh && ./update.sh $b; \
@@ -36,5 +36,5 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
               https://api.github.com/repos/${{ github.repository }}/dispatches \
-              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
+              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php83\",\"php82\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
           fi

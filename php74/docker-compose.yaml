@@ -19,7 +19,7 @@ web:
         - "9001:9001"
     environment:
       XDEBUG_CONFIG: remote_host=10.254.254.254
-      PHP_IDE_CONFIG: serverName=Docker-PHP71
+      PHP_IDE_CONFIG: serverName=Docker-PHP74
       TERM: xterm
     restart: always
     privileged: true
