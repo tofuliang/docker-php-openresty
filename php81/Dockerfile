@@ -29,9 +29,9 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.1.10.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.10.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="90e7120c77ee83630e6ac928d23bc6396603d62d83a3cf5df8a450d2e3070162"
+ARG PHP_URL="https://secure.php.net/get/php-8.1.27.tar.xz/from/this/mirror"
+ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.27.tar.xz.asc/from/this/mirror"
+ARG PHP_SHA256="479e65c3f05714d4aace1370e617d78e49e996ec7a7579a5be47535be61f0658"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -234,9 +234,9 @@ RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-5.0.0 \
-    && tar xzf /usr/src/swoole-5.0.0.tgz -C /usr/src \
-    && cd /usr/src/swoole-5.0.0 \
+    cd /usr/src && pecl download swoole-5.1.1 \
+    && tar xzf /usr/src/swoole-5.1.1.tgz -C /usr/src \
+    && cd /usr/src/swoole-5.1.1 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
