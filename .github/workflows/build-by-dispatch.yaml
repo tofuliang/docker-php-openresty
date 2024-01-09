@@ -148,7 +148,7 @@ jobs:
           fi
           if [ "${{ matrix.branch }}" = "php53" ] || [ "${{ matrix.branch }}" = "php54" ];then
             if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
-              timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) \
+              timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) \
               --progress=plain --platform linux/amd64 \
               -t tofuliang/docker-php-openresty:${{ matrix.branch }} -t tofuliang/docker-php-openresty:${{ matrix.branch }}-${version} ${{ matrix.branch }} \
               --push || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
@@ -162,7 +162,7 @@ jobs:
                   build=0
                   docker pull tofuliang/docker-php-openresty:php-builder
                   lastMd5=$(docker run tofuliang/docker-php-openresty:php-builder apk info|sort -n|tr -d "\n"|md5sum|cut -c 1-32)
-                  docker buildx build --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --no-cache --load --platform linux/amd64 -t tofuliang/docker-php-openresty:php-builder_now php-builder
+                  docker buildx build --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) --no-cache --load --platform linux/amd64 -t tofuliang/docker-php-openresty:php-builder_now php-builder
                   newMd5=$(docker run tofuliang/docker-php-openresty:php-builder_now apk info|sort -n|tr -d "\n"|md5sum|cut -c 1-32)
                   if [ "$lastMd5" != "$newMd5" ];then
                     build=1
@@ -173,13 +173,13 @@ jobs:
                 fi
 
                 if [ "$build" = "1" ];then
-                  timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) \
+                  timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) \
                   --progress=plain --platform linux/amd64,linux/386,linux/arm64,linux/arm/v7 -t tofuliang/docker-php-openresty:${{ matrix.branch }} ${{ matrix.branch }} \
                   --push && echo "build_timeout_branches=" >> $GITHUB_ENV || echo "build_timeout_branches=${{ matrix.branch }}" >> $GITHUB_ENV
                 fi
               fi
             else
-              # php-xx
+              # php-xx,openresty-xx
               docker buildx use default
               contextDir=${{ matrix.branch }}
               allStage=$(cat ${contextDir}/Dockerfile|grep STAGE|tail -1|grep -oE '[0-9]+')
@@ -218,7 +218,7 @@ jobs:
                   docker images
                   if [ $((timeOutTimestamp - $(date +%s))) -gt 100 ];then
                     if [ $(cat ${contextDir}/Dockerfile-stage|wc -l) -gt 10 ];then
-                      timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
+                      timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
                       --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${stage}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-stage \
                       --load || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
                     fi
@@ -236,7 +236,7 @@ jobs:
                       echo "========================== Dockerfile END =========================="
                     )
                     docker images
-                    timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg TARGETPLATFORM=${arch} --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
+                    timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) --build-arg TARGETPLATFORM=${arch} --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
                     --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-push \
                     --push || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
                     manifest="${manifest} tofuliang/docker-php-openresty:${contextDir}-${archc}"
