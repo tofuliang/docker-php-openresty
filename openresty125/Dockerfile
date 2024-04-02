@@ -3,7 +3,7 @@
 # https://github.com/openresty/docker-openresty
 
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.18"
+ARG RESTY_IMAGE_TAG="3.19"
 
 FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
 
@@ -12,8 +12,8 @@ LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 # Docker Build Arguments
 ARG TARGETARCH
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.18"
-ARG RESTY_VERSION="1.21.4.3"
+ARG RESTY_IMAGE_TAG="3.19"
+ARG RESTY_VERSION="1.25.3.1"
 ARG RESTY_OPENSSL_VERSION="1.1.1w"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
@@ -43,6 +43,7 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-http_stub_status_module \
     --with-http_sub_module \
     --with-http_v2_module \
+    --with-http_v3_module \
     --with-http_xslt_module=dynamic \
     --with-ipv6 \
     --with-http_iconv_module \
@@ -153,8 +154,8 @@ RUN apk add --no-cache --virtual .build-deps \
     --libdir=lib \
     -Wl,-rpath,/usr/local/openresty/openssl/lib; \
     fi \
-    && make -j${RESTY_J} \
-    && make -j${RESTY_J} install_sw \
+    && make -j`grep -c ^processor /proc/cpuinfo` \
+    && make -j`grep -c ^processor /proc/cpuinfo` install_sw \
     && cd /tmp \
     && curl -fSkL --retry 5 https://downloads.sourceforge.net/project/pcre/pcre/${RESTY_PCRE_VERSION}/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && echo "${RESTY_PCRE_SHA256}  pcre-${RESTY_PCRE_VERSION}.tar.gz" | shasum -a 256 --check \
@@ -166,17 +167,17 @@ RUN apk add --no-cache --virtual .build-deps \
     --enable-utf \
     --enable-unicode-properties \
     ${RESTY_PCRE_BUILD_OPTIONS} \
-    && make -j${RESTY_J} \
-    && make -j${RESTY_J} install \
+    && make -j`grep -c ^processor /proc/cpuinfo` \
+    && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
     && curl -fSkL --retry 5 https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && if [ -n "${RESTY_EVAL_POST_DOWNLOAD_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_POST_DOWNLOAD_PRE_CONFIGURE}); fi \
-    && eval ./configure -j${RESTY_J} ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} ${RESTY_PCRE_OPTIONS} \
+    && eval ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} ${RESTY_PCRE_OPTIONS} \
     && patch -d build/nginx-${RESTY_VERSION%.*}/ -p 1 < /tmp/ngx_http_proxy_connect_module-${NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION}/patch/proxy_connect_rewrite_102101.patch \
-    && make -j${RESTY_J} \
-    && make -j${RESTY_J} install \
+    && make -j`grep -c ^processor /proc/cpuinfo` \
+    && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
     && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
     && rm -rf \
@@ -199,13 +200,13 @@ RUN apk add --no-cache --virtual .build-deps \
     \
     && tar cvf /tmp/pack.tar /usr/local
 
-FROM --platform=$TARGETPLATFORM alpine:3.18 as tmp
+FROM --platform=$TARGETPLATFORM alpine:3.19 as tmp
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 COPY --from=build /tmp/pack.tar /tmp/pack.tar
 RUN tar xf /tmp/pack.tar -C /
 
-FROM --platform=$TARGETPLATFORM alpine:3.18
+FROM --platform=$TARGETPLATFORM alpine:3.19
 
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
@@ -295,5 +296,5 @@ ENTRYPOINT ["/init"]
 
 ### PUSH-START
 ARG ARCHC
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty121-1-${ARCHC} AS stage-3
+FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty125-1-${ARCHC} AS stage-3
 ### PUSH-END

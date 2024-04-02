@@ -224,7 +224,7 @@ RUN set -x \
     | sort -u \
     | awk 'system("[ -e /usr/local" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
-    | grep -v pcre \
+    | grep -vE 'libcrypto|libss|pcre' \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && if [ "$(command -v upx)q" != "q" ];then \

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/local/openresty/nginx/sbin/nginx -g 'daemon off;'
