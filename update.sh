@@ -27,7 +27,7 @@ function verComp() {
 
 SED=`which gsed||which sed`
 
-LOCAL_PHP_VER=$(cat Dockerfile | grep -Eo "PHP_URL.{0,99}php-([0-9]+\.){3}" | grep -Eo "([0-9]+\.[0-9]+\.[0-9]+)")
+LOCAL_PHP_VER=$(cat Dockerfile | grep -vE '^\s*#'| grep -Eo "PHP_URL.{0,99}php-([0-9]+\.){3}" | grep -Eo "([0-9]+\.[0-9]+\.[0-9]+)")
 REMOTE_PHP_INFO=`curl -ks https://www.php.net/downloads.php |tr -d "\n" `
 #REMOTE_PHP_INFO=$(cat curl.log)
 
@@ -57,7 +57,7 @@ if [ $? -eq 2 ]; then
 fi
 
 
-LOCAL_SWOOLE_VER=$(cat Dockerfile | grep -Eo " download swoole-([0-9]{1,3}\.?){3}"|grep -Eo "([0-9]{1,3}\.?){3}")
+LOCAL_SWOOLE_VER=$(cat Dockerfile | grep -vE '^\s*#'|grep -Eo " download swoole-([0-9]{1,3}\.?){3}"|grep -Eo "([0-9]{1,3}\.?){3}")
 if [ "$LOCAL_SWOOLE_VER" = "4.8.11" ];then
   exit 0
 fi

@@ -106,7 +106,7 @@ jobs:
             cd
           else
             sudo chown $USER:$(id -gn) php && git clone -b master --single-branch https://github.com/tofuliang/docker-php-openresty php
-            docker rmi -f `docker images -q`
+            docker rmi -f `docker images -q`||true
           fi
           sudo service docker stop
           [ ! -d 'php/docker' ] && mkdir -p php/docker && sudo rsync -avz /var/lib/docker/ php/docker
@@ -116,7 +116,7 @@ jobs:
           if [ ! -f /home/runner/.docker/cli-plugins ];then
             mkdir -p /home/runner/.docker/cli-plugins
             while [ ! -f /home/runner/.docker/cli-plugins/docker-buildx ];do
-              curl --output - -fSkL --retry 5 https://github.com/docker$(curl https://github.com/docker/buildx/releases |grep download|grep linux-amd64|grep -oE '/buildx.*linux-amd64'|head -1) > /home/runner/.docker/cli-plugins/docker-buildx
+              curl --output - -fSkL --retry 5 https://github.com/docker$(curl https://github.com/docker/buildx/releases |grep download|grep amd64|grep -oE '/buildx.*-amd64'|head -1|sed 's/\(buildx-v0.23.0\)\.[^-]\+\(-amd64\)/\1.linux\2/g') > /home/runner/.docker/cli-plugins/docker-buildx
             done
             chmod +x /home/runner/.docker/cli-plugins/docker-buildx
           fi
@@ -299,7 +299,7 @@ jobs:
           echo $ret | jq -r '.assets[] | select(.name | contains ("'${{ matrix.branch }}'.img")).id' | \
           xargs -n1 -i curl -X DELETE -H "$AUTH" "https://api.$cache_path/assets/{}"
           zstdmt -c --long php.img | split --numeric=1 -b 2000m - php.${{ matrix.branch }}.img.zst.
-          ls *img.zst* | parallel --wc 'while true; do curl -T {} -H "$AUTH" -H "Content-Type: application/octet-stream" "https://uploads.$cache_path/$cache_repo_id/assets?name={}" && break || true; done'
+          ls *img.zst* | parallel 'while true; do curl -T {} -H "$AUTH" -H "Content-Type: application/octet-stream" "https://uploads.$cache_path/$cache_repo_id/assets?name={}" && break || true; done'
       - name: set_build_timeout_branches
         run: |
           echo "${{ env.build_timeout_branches }}" > build_timeout_${{ matrix.branch }}.txt

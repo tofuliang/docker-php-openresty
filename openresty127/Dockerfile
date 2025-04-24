@@ -162,17 +162,17 @@ RUN apk add --no-cache --virtual .build-deps \
     && if [ "q${TARGETARCH}" = "q386" ];then \
     ./Configure linux-elf \
     shared zlib -g \
+    ${RESTY_OPENSSL_BUILD_OPTIONS} \
     --prefix=/usr/local/openresty/openssl3 \
     --libdir=lib \
     -Wl,-rpath,/usr/local/openresty/openssl3/lib; \
-    ${RESTY_OPENSSL_BUILD_OPTIONS} \
     else \
-    ./config \
+    ls -hal && ./config \
     shared zlib -g \
+    ${RESTY_OPENSSL_BUILD_OPTIONS} \
     --prefix=/usr/local/openresty/openssl3 \
     --libdir=lib \
-    -Wl,-rpath,/usr/local/openresty/openssl3/lib \
-    ${RESTY_OPENSSL_BUILD_OPTIONS} \
+    -Wl,-rpath,/usr/local/openresty/openssl3/lib; \
     fi \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install_sw \
@@ -218,13 +218,13 @@ RUN apk add --no-cache --virtual .build-deps \
     \
     && tar cvf /tmp/pack.tar /usr/local
 
-FROM --platform=$TARGETPLATFORM alpine:3.19 as tmp
+FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} as tmp
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 COPY --from=build /tmp/pack.tar /tmp/pack.tar
 RUN tar xf /tmp/pack.tar -C /
 
-FROM --platform=$TARGETPLATFORM alpine:3.19
+FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
@@ -314,5 +314,5 @@ ENTRYPOINT ["/init"]
 
 ### PUSH-START
 ARG ARCHC
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty125-1-${ARCHC} AS stage-3
+FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty127-1-${ARCHC} AS stage-3
 ### PUSH-END
