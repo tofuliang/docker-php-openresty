@@ -232,18 +232,18 @@ RUN set -x && echo $TARGETARCH \
 #     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qamd64" ] || [ "q$TARGETARCH" = "qarm64" ] ;then \
-    cd /usr/src && pecl download swoole-5.1.1 \
-    && tar xzf /usr/src/swoole-5.1.1.tgz -C /usr/src \
-    && cd /usr/src/swoole-5.1.1 \
+    cd /usr/src && pecl download swoole-6.0.2 \
+    && tar xzf /usr/src/swoole-6.0.2.tgz -C /usr/src \
+    && cd /usr/src/swoole-6.0.2 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
     fi
 # RUN set -x && echo $TARGETARCH \
 #     && if [ "q$TARGETARCH" = "q386" ];then \
-#     cd /usr/src && pecl download swoole-5.0.3 \
-#     && tar xzf /usr/src/swoole-5.0.3.tgz -C /usr/src \
-#     && cd /usr/src/swoole-5.0.3 \
+#     cd /usr/src && pecl download swoole-6.0.2 \
+#     && tar xzf /usr/src/swoole-6.0.2.tgz -C /usr/src \
+#     && cd /usr/src/swoole-6.0.2 \
 #     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
 #     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
 #     && docker-php-ext-enable swoole; \

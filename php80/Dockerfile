@@ -227,7 +227,7 @@ RUN set -x && echo $TARGETARCH \
 RUN set -x && echo $TARGETARCH \
     && pecl install xdebug >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
-    && pecl install mongodb >> ${LOG_FILE} 2>&1
+    && pecl install mongodb-1.20.1 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
