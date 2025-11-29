@@ -17,7 +17,7 @@ on:
         required: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -67,11 +67,20 @@ jobs:
           nohup sh -c '
           sudo -E apt -y install pv
           sudo rm -rf \
+            /home/runneradmin/.rustup \
+            /home/runneradmin/.cargo \
+            /home/runneradmin/.dotnet \
+            /usr/local/.ghcup \
+            /usr/local/share/powershell \
+            /usr/local/share/chromium \
+            /usr/lib/jvm \
+            /usr/lib/mono \
+            /usr/lib/heroku \
             /usr/share/dotnet \
             /etc/mysql \
             /etc/php
           sudo -E apt-get -y purge \
-            azure-cli \
+            azure-cli* mongodb* snap* \
             ghc* \
             zulu* \
             hhvm \
@@ -82,19 +91,20 @@ jobs:
             powershell \
             openjdk* \
             mysql* \
-            mono* \
             php*
             sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk
             sudo sysctl vm.swappiness=0
             ' &
       - name: restore container
         run: |
-          cd \
-          && curl -sL https://raw.githubusercontent.com/klever1988/nanopi-openwrt/zstd-bin/zstd | sudo tee /usr/bin/zstd > /dev/null
+          sudo chown -R $USER:$(id -gn) /mnt
+          cd /mnt
+          curl -sL https://raw.githubusercontent.com/klever1988/nanopi-openwrt/zstd-bin/zstd | sudo tee /usr/bin/zstd > /dev/null
           for i in {1..10}
           do
+            [ "$i" -lt 5 ] && while [ "$(df -h|grep root|awk '{print $5}'|rev|cut -c 2- |rev)" -gt 80 ]; do sleep 3;done
             curl -sL --fail https://github.com/tofuliang/docker-php-openresty/releases/download/cache/php.${{ matrix.branch }}.img.zst.0$i || break
-          done | zstdmt -d -o php.img || (truncate -s 25g php.img && mkfs.btrfs -M php.img)
+          done | zstdmt -d -o /mnt/php.img || (truncate -s 25g /mnt/php.img && mkfs.btrfs -M /mnt/php.img)
           LOOP_DEVICE=$(losetup -f) && echo "LOOP_DEVICE=$LOOP_DEVICE" >> $GITHUB_ENV
           sudo losetup -P --direct-io $LOOP_DEVICE php.img
           mkdir php && sudo mount -o nossd,compress=zstd $LOOP_DEVICE php || (sudo losetup -d $LOOP_DEVICE;rm php.img && \
@@ -103,7 +113,7 @@ jobs:
           if [ -d 'php/.git' ]; then
             cd php && rm -f zerospace && git config --local user.email "action@github.com" && git config --local user.name "GitHub Action"
             git fetch && git reset --hard origin/master
-            cd
+            cd /mnt
           else
             sudo chown $USER:$(id -gn) php && git clone -b master --single-branch https://github.com/tofuliang/docker-php-openresty php
             docker rmi -f `docker images -q`||true
@@ -112,18 +122,18 @@ jobs:
           [ ! -d 'php/docker' ] && mkdir -p php/docker && sudo rsync -avz /var/lib/docker/ php/docker
           [ ! -d 'php/docker.config' ] && mkdir -p php/docker.config && sudo rsync -avz /home/runner/.docker/ php/docker.config
           nohup sh -c "sudo mv /var/lib/docker /var/lib/docker_ && sudo mkdir -p /var/lib/docker && sudo rm -fr /var/lib/docker_" &
-          mv /home/runner/.docker /home/runner/.docker_ && mkdir /home/runner/.docker && rm -fr /home/runner/.docker_ && sudo mount -o bind /home/runner/php/docker.config /home/runner/.docker
+          mv /home/runner/.docker /home/runner/.docker_ && mkdir /home/runner/.docker && rm -fr /home/runner/.docker_ && sudo mount -o bind /mnt/php/docker.config /home/runner/.docker
           if [ ! -f /home/runner/.docker/cli-plugins ];then
             mkdir -p /home/runner/.docker/cli-plugins
             while [ ! -f /home/runner/.docker/cli-plugins/docker-buildx ];do
-              curl --output - -fSkL --retry 5 https://github.com/docker$(curl https://github.com/docker/buildx/releases |grep download|grep amd64|grep -oE '/buildx.*-amd64'|head -1|sed 's/\(buildx-v0.23.0\)\.[^-]\+\(-amd64\)/\1.linux\2/g') > /home/runner/.docker/cli-plugins/docker-buildx
+              curl --output - -fSkL --retry 5 https://github.com/docker$(curl https://github.com/docker/buildx/releases |grep download|grep amd64|grep -oE '/buildx.*-amd64'|head -1|sed 's/\(buildx-v0.23.0\)\.[^-]\+\(-amd64\)/\1.linux\2/g'|sed 's/darwin/linux/') > /home/runner/.docker/cli-plugins/docker-buildx
             done
             chmod +x /home/runner/.docker/cli-plugins/docker-buildx
           fi
           while [ $(mount|grep btrfs|grep var|wc -l) -lt 1 ];do
             sleep 1;
             mkdir -p /var/lib/docker || true
-            sudo mount -o bind /home/runner/php/docker /var/lib/docker
+            sudo mount -o bind /mnt/php/docker /var/lib/docker
           done
           sudo service docker start
       - name: Log in to GitHub Docker Registry
@@ -133,7 +143,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Build ${{ matrix.branch }}
         run: |
-          cd;
+          cd /mnt;
           cd php;
           echo "Build ${{ matrix.branch }}..."
           buildTimeout=0
@@ -280,7 +290,7 @@ jobs:
       - name: save container
         if: ${{ always() }}
         run: |
-          cd;
+          cd /mnt;
           docker images
           docker logout || true
           sudo service docker stop
@@ -288,7 +298,7 @@ jobs:
           sudo umount /home/runner/.docker
           sudo umount /var/lib/docker
           sudo mount -o remount,compress=no,nodatacow,nodatasum php
-          sudo bash -c "cd /home/runner/php/; pv /dev/zero > zerospace || true; sync; rm -f zerospace;"
+          sudo bash -c "cd /mnt/php/; pv /dev/zero > zerospace || true; sync; rm -f zerospace;"
           sleep 10
           sudo umount php || true
           sudo losetup -d $LOOP_DEVICE || true
