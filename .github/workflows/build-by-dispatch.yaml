@@ -230,7 +230,7 @@ jobs:
                     if [ $(cat ${contextDir}/Dockerfile-stage|wc -l) -gt 10 ];then
                       timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
                       --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${stage}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-stage \
-                      --load || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
+                      --load || { buildTimeout=1; echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV; }
                     fi
                   fi
                   echo "==========================for loop ${arch} end ${stage}=========================="
@@ -248,7 +248,7 @@ jobs:
                     docker images
                     timeout $((timeOutTimestamp - $(date +%s))) docker buildx build --rm=false --build-arg JOBS=$(grep -c ^processor /proc/cpuinfo) --build-arg RESTY_J=$(grep -c ^processor /proc/cpuinfo) --build-arg TARGETPLATFORM=${arch} --build-arg ARCHC=${archc} --build-arg TARGETARCH=${targetArch} \
                     --progress=plain --platform ${arch} -t tofuliang/docker-php-openresty:${contextDir}-${archc} ${contextDir} -f ${contextDir}/Dockerfile-push \
-                    --push || (buildTimeout=1 && echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV)
+                    --push || { buildTimeout=1; echo "build_timeout_branches=${contextDir}" >> $GITHUB_ENV; }
                     manifest="${manifest} tofuliang/docker-php-openresty:${contextDir}-${archc}"
                   fi
                 fi
@@ -315,9 +315,11 @@ jobs:
           zstdmt -c --long php.img | split --numeric=1 -b 2000m - php.${{ matrix.branch }}.img.zst.
           ls *img.zst* | parallel 'while true; do curl -T {} -H "$AUTH" -H "Content-Type: application/octet-stream" "https://uploads.$cache_path/$cache_repo_id/assets?name={}" && break || true; done'
       - name: set_build_timeout_branches
+        if: ${{ always() }}
         run: |
           echo "${{ env.build_timeout_branches }}" > build_timeout_${{ matrix.branch }}.txt
       - name: Upload set_build_timeout_branches
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: build_timeout_${{ matrix.branch }}
@@ -327,6 +329,7 @@ jobs:
         if: ${{ failure() }}
   dispatch:
     needs: build
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Download build_timeout_branches
