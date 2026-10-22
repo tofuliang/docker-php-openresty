@@ -27,11 +27,11 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
+ARG GPG_KEYS="BEC555E22A143553"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.3.20.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.3.20.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="f15914e071b5bddaf1475b5f2ba68107e8b8846655f9e89690fb7cd410b0db6c"
+ARG PHP_URL="https://www.php.net/distributions/php-8.3.36.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-8.3.36.tar.xz.asc"
+ARG PHP_SHA256="dd54693aa334c5c4d72e9aee96b082c2473750a18a6c1d105789c93a3b1692fd"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -60,7 +60,7 @@ RUN set -x && echo $TARGETARCH \
     wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
     done; \
     gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \

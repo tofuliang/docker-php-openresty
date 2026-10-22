@@ -27,11 +27,11 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
+ARG GPG_KEYS="910DEB46F53EA312"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.4.30.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.30.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="ea72a34f32c67e79ac2da7dfe96177f3c451c3eefae5810ba13312ed398ba70d"
+ARG PHP_URL="https://www.php.net/distributions/php-7.4.33.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-7.4.33.tar.xz.asc"
+ARG PHP_SHA256="924846abf93bc613815c55dd3f5809377813ac62a9ec4eb3778675b82a27b927"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -60,7 +60,7 @@ RUN set -x && echo $TARGETARCH \
     wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
     done; \
     gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -229,9 +229,9 @@ RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-4.8.11 \
-    && tar xzf /usr/src/swoole-4.8.11.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.8.11 \
+    cd /usr/src && pecl download swoole-4.8.13 \
+    && tar xzf /usr/src/swoole-4.8.13.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.8.13 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \

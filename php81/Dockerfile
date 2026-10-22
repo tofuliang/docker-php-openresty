@@ -27,11 +27,11 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 BFDDD28642824F8118EF77909B67A5C12229118F"
+ARG GPG_KEYS="F9C39DC0B9698544"
 
-ARG PHP_URL="https://secure.php.net/get/php-8.1.32.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-8.1.32.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="c582ac682a280bbc69bc2186c21eb7e3313cc73099be61a6bc1d2cd337cbf383"
+ARG PHP_URL="https://www.php.net/distributions/php-8.1.34.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-8.1.34.tar.xz.asc"
+ARG PHP_SHA256="ffa9e0982e82eeaea848f57687b425ed173aa278fe563001310ae2638db5c251"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -60,7 +60,7 @@ RUN set -x && echo $TARGETARCH \
     wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
     done; \
     gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -232,18 +232,18 @@ RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qamd64" ] || [ "q$TARGETARCH" = "qarm64" ] ;then \
-    cd /usr/src && pecl download swoole-5.1.1 \
-    && tar xzf /usr/src/swoole-5.1.1.tgz -C /usr/src \
-    && cd /usr/src/swoole-5.1.1 \
+    cd /usr/src && pecl download swoole-6.1.10 \
+    && tar xzf /usr/src/swoole-6.1.10.tgz -C /usr/src \
+    && cd /usr/src/swoole-6.1.10 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
     fi
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qarm" ] ;then \
-    cd /usr/src && pecl download swoole-5.0.3 \
-    && tar xzf /usr/src/swoole-5.0.3.tgz -C /usr/src \
-    && cd /usr/src/swoole-5.0.3 \
+    cd /usr/src && pecl download swoole-6.1.10 \
+    && tar xzf /usr/src/swoole-6.1.10.tgz -C /usr/src \
+    && cd /usr/src/swoole-6.1.10 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
