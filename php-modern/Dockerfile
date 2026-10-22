@@ -1,10 +1,20 @@
-FROM --platform=$TARGETPLATFORM alpine:3.14
+FROM --platform=$TARGETPLATFORM alpine:3.23.5
 
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 ARG TARGETARCH
 
 COPY --from=tofuliang/docker-php-openresty:php74 /usr/local/bin /usr/local/bin
+
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/bin /usr/local/php85/bin
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/sbin /usr/local/php85/sbin
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/lib /usr/local/php85/lib
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/etc/php85 /usr/local/etc/php85
+
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/bin /usr/local/php84/bin
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/sbin /usr/local/php84/sbin
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/lib /usr/local/php84/lib
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/etc/php84 /usr/local/etc/php84
 
 COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/bin /usr/local/php83/bin
 COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/sbin /usr/local/php83/sbin
@@ -57,8 +67,8 @@ ADD s6/s6-overlay /etc/s6-overlay
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && for i in 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
-    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl \
+    && for i in 85 84 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
+    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl gnu-libiconv \
     && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
     && arch=$TARGETARCH \
     && best="--best" \
@@ -136,6 +146,8 @@ RUN set -x \
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 # fpm
+EXPOSE 9085
+EXPOSE 9084
 EXPOSE 9083
 EXPOSE 9082
 EXPOSE 9081

@@ -2,16 +2,29 @@ name: DockerFile Updater
 
 on:
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: '即使没有版本变化也触发镜像构建（用于首次构建新分支）'
+        type: boolean
+        default: false
   schedule:
-    - cron: 30 2 * * *
+    - cron: '30 2 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dockerfile-updater
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    if: github.event.repository.owner.id == github.event.sender.id
+    # 手动触发时仍然只允许仓库所有者执行；定时任务不受 sender 影响。
+    if: github.event_name != 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
@@ -23,18 +36,43 @@ jobs:
           git config --global user.name "tofuliang"
       - name: source update
         run: |
-          update=0
-          for b in 83 82 81 80 74;do
-          ( cd php${b}; \
-          cp ../update.sh update.sh; \
-          chmod a+x ./update.sh && ./update.sh $b; \
-          rm -fr update.sh )
+          set -uo pipefail
+          rc=0
+          for b in 85 84 83 82 81 80 74; do
+            if ! ( set -e; cd "php${b}"; cp ../update.sh update.sh; chmod a+x update.sh; ./update.sh "$b" ); then
+              echo "::error::update failed for php${b}"
+              rc=1
+            fi
+            rm -f "php${b}/update.sh"
           done
-          git add . && git commit -m "update" && git push && update=1 || true
-          if [ "$update" = "1" ];then
-            curl -v \
+          # GitHub 会在公共仓库长期无提交后自动停用 schedule（阈值 60 天），
+          # 这里按 30 天兜底：往 .github/keepalive/ 写心跳文件，用一次提交保持仓库活跃。
+          age_days=$(( ( $(date -u +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "days since last commit: ${age_days}"
+          if [ "${age_days}" -ge 30 ]; then
+            mkdir -p .github/keepalive
+            printf '%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > .github/keepalive/heartbeat
+            echo "repository inactive for ${age_days} days, refresh .github/keepalive/heartbeat"
+          fi
+          changed=0
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "update $(date -u +%F)"
+            git push
+            changed=1
+          else
+            echo "nothing to update"
+          fi
+          # 只有 Dockerfile 变化才值得触发 6 小时以上的镜像构建，心跳提交不触发。
+          docker_changed=0
+          if [ "$changed" = "1" ] && git show --name-only --format= HEAD | grep -qE '(^|/)Dockerfile$'; then
+            docker_changed=1
+          fi
+          if [ "$docker_changed" = "1" ] || [ "${{ inputs.force_build }}" = "true" ]; then
+            curl -fsS -X POST \
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
-              https://api.github.com/repos/${{ github.repository }}/dispatches \
-              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\"]","build_branches":["php-builder"],"branches": "[\"php-builder\",\"php83\",\"php82\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
+              "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\",\"php-builder-modern\"]","build_branches":["php-builder","php-builder-modern"],"branches": "[\"php-builder\",\"php-builder-modern\",\"openresty131\",\"php85\",\"php84\",\"php83\",\"php82\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
           fi
+          exit $rc

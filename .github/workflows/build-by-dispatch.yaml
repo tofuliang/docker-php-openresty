@@ -331,7 +331,7 @@ jobs:
           path: build_timeout_branches
       - name: dispatch
         run: |
-          build_timeout_branches=$(cat build_timeout_branches/build_timeout_php*/*.txt|xargs)
+          build_timeout_branches=$(cat build_timeout_branches/*/*.txt|xargs)
           branches='${{ github.event.client_payload.branches }}'
           build_branches='${{ github.event.client_payload.build_branches_str }}'
           if [ $(echo ${build_timeout_branches}|jq -McR 'split(" ")'|jq 'length') -gt 0 ];then
