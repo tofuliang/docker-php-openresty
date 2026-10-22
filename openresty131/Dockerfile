@@ -34,7 +34,8 @@ ARG RESTY_PCRE_BUILD_OPTIONS="--enable-jit --enable-pcre2grep-jit --disable-bsr-
 
 ARG RESTY_J="1"
 ARG NGINX_DAV_EXT_MODULE_VERSION="3.0.0"
-ARG NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION="0.0.5"
+# nginx 1.31 已原生支持 CONNECT 方法（allow_connect），第三方 proxy_connect 模块
+# 的 102101 补丁在 nginx 1.31.1 上已无法应用，openresty131 不再编译该模块。
 
 # https://github.com/openresty/openresty-packaging/blob/master/alpine/openresty/APKBUILD
 ARG RESTY_CONFIG_OPTIONS="\
@@ -73,7 +74,6 @@ ARG RESTY_CONFIG_OPTIONS="\
     --with-stream_ssl_preread_module \
     --with-threads \
     --add-module=/tmp/nginx-dav-ext-module-${NGINX_DAV_EXT_MODULE_VERSION}/ \
-    --add-module=/tmp/ngx_http_proxy_connect_module-${NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION}/ \
     --add-module=/tmp/ngx_brotli/ \
     --add-module=/tmp/ngx_njs/nginx \
     "
@@ -138,8 +138,6 @@ RUN apk add --no-cache --virtual .build-deps \
     ${RESTY_ADD_PACKAGE_RUNDEPS} \
     && apk add --no-cache upx >/dev/null 2>&1 ||true \
     && cd /tmp \
-    && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/archive/refs/tags/v${NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION}.tar.gz |tar xzf - -C /tmp \
-    && curl -fSkL --retry 5 https://github.com/chobits/ngx_http_proxy_connect_module/raw/master/patch/proxy_connect_rewrite_102101.patch > /tmp/ngx_http_proxy_connect_module-${NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION}/patch/proxy_connect_rewrite_102101.patch \
     && curl -fSkL --retry 5 https://github.com/arut/nginx-dav-ext-module/archive/v${NGINX_DAV_EXT_MODULE_VERSION}.tar.gz |tar xzf - -C /tmp \
     && git clone --depth=1 https://github.com/google/ngx_brotli /tmp/ngx_brotli && cd /tmp/ngx_brotli && git submodule update --init \
     && git clone --depth=1 https://github.com/nginx/njs /tmp/ngx_njs \
@@ -195,7 +193,6 @@ RUN apk add --no-cache --virtual .build-deps \
     && cd /tmp/openresty-${RESTY_VERSION} \
     && if [ -n "${RESTY_EVAL_POST_DOWNLOAD_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_POST_DOWNLOAD_PRE_CONFIGURE}); fi \
     && eval ./configure -j`grep -c ^processor /proc/cpuinfo` ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} ${RESTY_PCRE_OPTIONS} \
-    && patch -d build/nginx-${RESTY_VERSION%.*}/ -p 1 < /tmp/ngx_http_proxy_connect_module-${NGINX_HTTP_PROXY_CONNECT_MODULE_VERSION}/patch/proxy_connect_rewrite_102101.patch \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install \
     && cd /tmp \
