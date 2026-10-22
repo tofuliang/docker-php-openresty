@@ -245,8 +245,9 @@ RUN set -x && echo $TARGETARCH \
 #    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/yasd.so" \
 RUN set -x && echo $TARGETARCH \
     && pecl install grpc >> ${LOG_FILE} 2>&1
+# PHP 8.5 的 ext/opcache/config.m4 固定静态编译，不再生成 opcache.so，无需 enable
 RUN set -x && echo $TARGETARCH \
-    && docker-php-ext-enable grpc memcached redis sodium mongodb opcache.so \
+    && docker-php-ext-enable grpc memcached redis sodium mongodb \
     # yac yaf imagick \
     # strip 所有扩展
     && { find /usr/local/php${BRANCH}/lib -type f -name "*.so" -exec strip --strip-all '{}' + || true; } \
