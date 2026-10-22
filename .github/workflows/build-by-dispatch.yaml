@@ -293,12 +293,16 @@ jobs:
           cd /mnt;
           docker images
           docker logout || true
+          # 先回收 buildkit 缓存，否则 25G 的 loop 镜像写满后 btrfs 会变成只读
+          docker buildx prune -f --keep-storage 5G || true
+          docker builder prune -f --keep-storage 5G || true
           sudo service docker stop
           sleep 30
-          sudo umount /home/runner/.docker
-          sudo umount /var/lib/docker
-          sudo mount -o remount,compress=no,nodatacow,nodatasum php
-          sudo bash -c "cd /mnt/php/; pv /dev/zero > zerospace || true; sync; rm -f zerospace;"
+          sudo umount /home/runner/.docker || true
+          sudo umount /var/lib/docker || true
+          sudo mount -o remount,compress=no,nodatacow,nodatasum php || true
+          # 用明确的大小（留 1G 余量）预分配 zerospace，避免把 btrfs 写到 100% 后变只读
+          sudo bash -c 'cd /mnt/php/ && { avail=$(df -B1 --output=avail . | tail -1); echo "zerospace: $((avail/1048576)) MiB available"; if [ "${avail:-0}" -gt 1073741824 ]; then head -c $((avail - 1073741824)) /dev/zero > zerospace || true; fi; sync; rm -f zerospace || true; }' || true
           sleep 10
           sudo umount php || true
           sudo losetup -d $LOOP_DEVICE || true
