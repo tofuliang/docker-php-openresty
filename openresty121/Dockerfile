@@ -1,4 +1,3 @@
-### STAGE-1-BEGIN
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 
@@ -229,11 +228,11 @@ RUN set -x \
     && if [ "q$arch" = "qarm" ];then arch="armhf";upxarch="arm";best="";lzma=""; fi \
     && while [ ! -f /init ];do \
     echo "getting s6-overlay init ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
     echo "getting s6-overlay package ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-${arch}.tar.xz| tar xJf - -C /; \
     done \
     && apk add --no-cache logrotate sudo tzdata \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -290,10 +289,3 @@ EXPOSE 80
 EXPOSE 443
 
 ENTRYPOINT ["/init"]
-
-### STAGE-1-END
-
-### PUSH-START
-ARG ARCHC
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty121-1-${ARCHC} AS stage-3
-### PUSH-END

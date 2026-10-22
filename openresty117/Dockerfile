@@ -142,7 +142,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install_sw \
     && cd /tmp \
-    && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://ftp.exim.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && cd /tmp/pcre-${RESTY_PCRE_VERSION} \
     && ./configure \
@@ -208,7 +208,7 @@ RUN set -x \
     && apk add --no-cache --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack curl \
     && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v2.2.0.3/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && apk add --no-cache logrotate sudo tzdata \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local/bin -type f -perm +0111 -exec upx -d '{}' + || true; } \

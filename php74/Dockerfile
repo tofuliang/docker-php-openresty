@@ -1,18 +1,14 @@
-### ARG-BEGIN
 ARG BRANCH="74"
-ARG ARCHC
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 ARG TARGETARCH
 ARG LOG_FILE="/tmp/${BRANCH}.base.${TARGETARCH}.log"
-### ARG-END
-
-### STAGE-1-BEGIN
 
 # Dockerfile - alpine
+# NOTE: upx 必须钉版本——5.x 压出的二进制在本镜像里启动即 SIGSEGV
+# （s6-overlay 初始化 'child crashed with signal 11'）；4.2.4 实测正常。
 # https://github.com/docker-library/php
 FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder AS build
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -27,11 +23,11 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
+ARG GPG_KEYS="910DEB46F53EA312"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.4.30.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.4.30.tar.xz.asc/from/this/mirror"
-ARG PHP_SHA256="ea72a34f32c67e79ac2da7dfe96177f3c451c3eefae5810ba13312ed398ba70d"
+ARG PHP_URL="https://www.php.net/distributions/php-7.4.33.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-7.4.33.tar.xz.asc"
+ARG PHP_SHA256="924846abf93bc613815c55dd3f5809377813ac62a9ec4eb3778675b82a27b927"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
@@ -60,7 +56,7 @@ RUN set -x && echo $TARGETARCH \
     wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
     done; \
     gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -203,11 +199,9 @@ RUN set -x && echo $TARGETARCH \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable tideways_xhprof
-### STAGE-1-END
 
-### STAGE-2-BEGIN
+FROM build AS stage-2
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -215,8 +209,11 @@ ARG JOBS=2
 
 # 使用pecl安装扩展
 ARG MAKE="make -j$JOBS"
+# 顺序原则：编译最慢、版本已钉死的放最前；后续层变动不会让 grpc 重编。
 RUN set -x && echo $TARGETARCH \
-    && pecl install redis >> ${LOG_FILE} 2>&1
+    && pecl install grpc-1.84.0 >> ${LOG_FILE} 2>&1
+RUN set -x && echo $TARGETARCH \
+    && pecl install redis-6.1.0 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install yac >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
@@ -224,25 +221,24 @@ RUN set -x && echo $TARGETARCH \
 RUN set -x && echo $TARGETARCH \
     && pecl install xdebug-3.1.6 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
-    && pecl install mongodb >> ${LOG_FILE} 2>&1
+    && pecl install mongodb-1.20.1 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" != "q386" ];then \
-    cd /usr/src && pecl download swoole-4.8.11 \
-    && tar xzf /usr/src/swoole-4.8.11.tgz -C /usr/src \
-    && cd /usr/src/swoole-4.8.11 \
+    cd /usr/src && for i in $(seq 1 8); do curl -fSkL --max-time 120 --retry 2 "https://pecl.php.net/get/swoole-4.8.13.tgz" -o "swoole-4.8.13.tgz" && break; sleep 10; done \
+    && test -s /usr/src/swoole-4.8.13.tgz \
+    && tar xzf /usr/src/swoole-4.8.13.tgz -C /usr/src \
+    && cd /usr/src/swoole-4.8.13 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
-    && docker-php-ext-enable swoole; \
+    && docker-php-ext-enable swoole || { echo 'swoole build failed'; grep -B5 -E 'error:|Error [12]' ${LOG_FILE} | tail -n 80; tail -n 40 ${LOG_FILE}; exit 1; } \
     fi
 #    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
 #    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
 #    && cd /usr/src/yasd-0.3.7 \
 #    && phpize --clean && phpize && ./configure && make -j$JOBS \
 #    && cp /usr/src/yasd-0.3.7/modules/yasd.so "/usr/local/php${BRANCH}/lib/php/extensions/no-debug-non-zts-`php -ni|grep 'PHP Extension ='|sed -e 's/PHP Extension => //'`/yasd.so" \
-RUN set -x && echo $TARGETARCH \
-    && pecl install grpc >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && docker-php-ext-enable grpc memcached redis yac yaf sodium mongodb imagick opcache.so \
     # strip 所有扩展
@@ -279,15 +275,8 @@ RUN set -x && echo $TARGETARCH \
     echo "getting upx package ..." \
     && sleep 3 \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 "https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-${upxarch}_linux.tar.xz"| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
-    done \
-    && while [ ! -f /upx_amd64.core ];do \
-    echo "getting amd64 upx package ..." \
-    && sleep 3 \
-    && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
-    && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
@@ -297,13 +286,6 @@ RUN set -x && echo $TARGETARCH \
     fi \
     fi \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
-### STAGE-2-END
-
-### STAGE-3-BEGIN
-ARG BRANCH
-ARG ARCHC
-ARG PHP_INI_DIR
-ARG TARGETARCH
 
 FROM --platform=$TARGETPLATFORM alpine:3.14 AS tmp
 
@@ -313,7 +295,6 @@ RUN tar xf /tmp/pack.tar -C /
 
 FROM --platform=$TARGETPLATFORM alpine:3.14
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 
@@ -345,15 +326,8 @@ RUN set -x && echo $TARGETARCH \
     echo "getting upx package ..." \
     && sleep 3 \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 "https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-${upxarch}_linux.tar.xz"| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
-    done \
-    && while [ ! -f /upx_amd64.core ];do \
-    echo "getting amd64 upx package ..." \
-    && sleep 3 \
-    && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
-    && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*" -type f -perm +0111 -exec upx -d '{}' + || true; } \
@@ -369,11 +343,11 @@ RUN set -x && echo $TARGETARCH \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && while [ ! -f /init ];do \
     echo "getting s6-overlay init ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
     echo "getting s6-overlay package ..." \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    && curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-${arch}.tar.xz| tar xJf - -C /; \
     done \
     && if [ "$(command -v upx)q" != "q" ] && [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
@@ -382,19 +356,9 @@ RUN set -x && echo $TARGETARCH \
     else \
     { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx ${lzma} '{}' + || true; }; \
     fi \
-    && { find /usr/bin -size -95k -type f -perm +0111 -exec upx ${best} '{}' + || true; } \
-    && { find /package -size -95k -type f -perm +0111 -exec upx ${best} '{}' + || true; } \
-    && { find /usr/sbin -size -95k -type f -perm +0111 -exec upx ${best} '{}' + || true; } \
-    && { find /bin -type f -size -95k -perm +0111 -exec upx ${best} '{}' + || true; } \
-    && { find /sbin -type f -size -95k -perm +0111 -exec upx ${best} '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx ${lzma} '{}' + || true; } \
-    && { find /package -type f -perm +0111 -exec upx ${lzma} '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx ${lzma} '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx ${lzma} '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx ${lzma} '{}' + || true; } \
     fi \
     && apk del libc-utils || true \
-    && rm -fr /usr/bin/upx || true \
+    && { rm -fr /usr/bin/upx || true; } \
     && rm -fr /*.core;
 # 日志目录
 RUN set -x && echo $TARGETARCH \
@@ -416,9 +380,3 @@ ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 EXPOSE 90${BRANCH}
 
 ENTRYPOINT ["/init"]
-
-### STAGE-3-END
-
-### PUSH-START
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php${BRANCH}-3-${ARCHC} AS stage-3
-### PUSH-END

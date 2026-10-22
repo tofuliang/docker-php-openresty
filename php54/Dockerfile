@@ -21,10 +21,10 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
+ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F F38252826ACD957EF380D39F2F7956BC5DA04B5D"
 
 ARG PHP_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.4.45.tar.bz2.asc/from/this/mirror"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2.asc"
 ARG PHP_SHA256="4e0d28b1554c95cfaea6fa2b64aac85433f158ce72bb571bcd5574f98f4c6582"
 ARG PHP_MD5=""
 
@@ -90,9 +90,9 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
     gnupg \
     openssl \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted \
     gnu-libiconv \
-    && apk add --no-cache --virtual .build-tidy-deps --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+    && apk add --no-cache --virtual .build-tidy-deps --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted \
     tidyhtml-dev \
     ; \
     \
@@ -112,7 +112,7 @@ RUN set -x \
     wget -O php.tar.bz2.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    wget -qO- "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$key" | gpg --batch --import; \
     done; \
     gpg --batch --verify php.tar.bz2.asc php.tar.bz2; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -220,7 +220,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
     # 使用pecl安装扩展
-    && pecl install redis-4.3.0 xdebug-2.4.1 imagick ZendOpcache \
+    && pecl install redis-4.3.0 xdebug-2.4.1 imagick-3.4.4 ZendOpcache \
     && if [ "q$TARGETARCH" != "q386" ];then \
     pecl install swoole-1.10.5 && docker-php-ext-enable swoole; \
     fi \
@@ -251,7 +251,7 @@ RUN set -x \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; }
 
 RUN set -x \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETPLATFORM|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size +1024 -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
@@ -291,8 +291,8 @@ ENV PATH="/usr/local/bin:/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbi
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv tidyhtml \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted gnu-libiconv tidyhtml \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack dpkg \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
@@ -308,22 +308,14 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git openssh-client tar xz curl \
     && apk add --no-cache $runDeps \
     && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v2.2.0.3/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
-    { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
     else \
     { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --lzma '{}' + || true; }; \
     fi \
-    && { find /usr/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /bin -type f -size -95k -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /sbin -type f -size -95k -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && apk del .upxd; \
     fi \
     # 日志目录

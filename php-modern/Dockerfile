@@ -1,10 +1,23 @@
-FROM --platform=$TARGETPLATFORM alpine:3.14
+# NOTE: upx 必须钉版本——5.x 压出的二进制在本镜像里启动即 SIGSEGV（4.2.4 实测正常）。
+# 固定在 3.22：Alpine 3.23 的 apk trigger 在 QEMU arm64 下会 SIGSEGV
+# （docker-library/ruby#521），只影响交叉构建。
+FROM --platform=$TARGETPLATFORM alpine:3.22.7
 
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 
 ARG TARGETARCH
 
 COPY --from=tofuliang/docker-php-openresty:php74 /usr/local/bin /usr/local/bin
+
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/bin /usr/local/php85/bin
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/sbin /usr/local/php85/sbin
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/php85/lib /usr/local/php85/lib
+COPY --from=tofuliang/docker-php-openresty:php85 /usr/local/etc/php85 /usr/local/etc/php85
+
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/bin /usr/local/php84/bin
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/sbin /usr/local/php84/sbin
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/php84/lib /usr/local/php84/lib
+COPY --from=tofuliang/docker-php-openresty:php84 /usr/local/etc/php84 /usr/local/etc/php84
 
 COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/bin /usr/local/php83/bin
 COPY --from=tofuliang/docker-php-openresty:php83 /usr/local/php83/sbin /usr/local/php83/sbin
@@ -20,6 +33,19 @@ COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/bin /usr/local
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/sbin /usr/local/php81/sbin
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/php81/lib /usr/local/php81/lib
 COPY --from=tofuliang/docker-php-openresty:php81 /usr/local/etc/php81 /usr/local/etc/php81
+# php81 基于 alpine 3.14（tidy 5.6），其 tidy 扩展依赖 libtidy.so.5；
+# alpine 3.22 只提供 libtidy.so.58，两者不能共存于 apk，这里直接复制旧库
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libtidy.so.5 /usr/lib/libtidy.so.5
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libtidy.so.5.6.0 /usr/lib/libtidy.so.5.6.0
+# php70–81 基于 alpine 3.14，扩展依赖 ICU67/OpenLDAP2.4/libsodium23/OpenSSL1.1/libffi7，
+# 这些在 alpine 3.22 里没有对应包（同名包只能装新版本），直接复制旧库，soname 不同可共存
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libicu*.67 /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/liblber-2.4.so.2* /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libldap-2.4.so.2* /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libsodium.so.23* /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libssl.so.1.1* /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libcrypto.so.1.1* /usr/lib/
+COPY --from=tofuliang/docker-php-openresty:php81 /usr/lib/libffi.so.7* /usr/lib/
 
 COPY --from=tofuliang/docker-php-openresty:php80 /usr/local/php80/bin /usr/local/php80/bin
 COPY --from=tofuliang/docker-php-openresty:php80 /usr/local/php80/sbin /usr/local/php80/sbin
@@ -57,8 +83,8 @@ ADD s6/s6-overlay /etc/s6-overlay
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && for i in 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
-    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl \
+    && for i in 85 84 81 80 74 73 72 71 70;do ln -s /usr/local/php$i/bin/php /usr/local/bin/php$i; done \
+    && apk add --no-cache logrotate sudo tzdata git openssh-client busybox-extras tar xz curl gnu-libiconv \
     && apk add --no-cache --virtual .imagemagick_runtime imagemagick \
     && arch=$TARGETARCH \
     && best="--best" \
@@ -71,14 +97,14 @@ RUN set -x \
     echo "getting upx package ..." \
     && sleep 3 \
     && mkdir -p /tmp/upxd || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
+    && curl --output - -fSkL --retry 5 "https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-${upxarch}_linux.tar.xz"| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
     done \
     && while [ ! -f /upx_amd64.core ];do \
     echo "getting amd64 upx package ..." \
     && sleep 3 \
     && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
+    && curl --output - -fSkL --retry 5 "https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz"| tar xJf - -C /tmp/upxamd64 \
     && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
@@ -91,13 +117,14 @@ RUN set -x \
     | awk 'system("[ -e /usr/local" $1 " ]") == 0 { next } { print "so:" $1 }' \
     | grep so:l \
     | grep -v libc.musl \
+    | grep -vE 'so:(libtidy\.so\.5|libcrypto\.so\.1\.1|libffi\.so\.7|libicu(i18n|io|uc)\.so\.67|liblber-2\.4\.so\.2|libldap-2\.4\.so\.2|libsodium\.so\.23|libssl\.so\.1\.1)$' \
     )" \
     && apk add --no-cache --virtual .persistent-deps $runDeps musl \
     && while [ ! -f /init ];do \
-    curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep noarch|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-noarch.tar.xz| tar xJf - -C /; \
     done \
     && while [ ! -f /command/s6-cat ];do \
-    curl --output - -fSkL --retry 5 https://github.com$(curl https://api.github.com/repos/just-containers/s6-overlay/releases/latest |grep download|grep ${arch}|grep -oE '/just.*xz'|head -1)| tar xJf - -C /; \
+    curl --output - -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-${arch}.tar.xz| tar xJf - -C /; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
@@ -109,20 +136,12 @@ RUN set -x \
     && { find /usr/local/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /usr/sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /bin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
-    && { find /sbin -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     && { find /usr/local/php${BRANCH}/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /usr/bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /usr/sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /bin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
-    && { find /sbin -type f -perm +0111 -exec upx --lzma '{}' + || true; } \
     fi \
-    && apk del libc-utils || true \
-    && rm -fr /usr/bin/upx || true \
+    && { apk del libc-utils || true; } \
+    && { rm -fr /usr/bin/upx || true; } \
     && rm -fr /*.core \
     # 日志目录
     && mkdir -p /usr/local/var/log/php-fpm/ \
@@ -136,6 +155,8 @@ RUN set -x \
 ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 
 # fpm
+EXPOSE 9085
+EXPOSE 9084
 EXPOSE 9083
 EXPOSE 9082
 EXPOSE 9081

@@ -1,0 +1,28 @@
+{
+  "php-builder":        { "mode": "multi", "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php-builder-modern": { "mode": "multi", "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php-modern":         { "mode": "multi", "arches": ["amd64", "386", "arm64", "armv7"] },
+
+  "php53": { "arches": ["amd64"] },
+  "php54": { "arches": ["amd64"] },
+  "php55": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php56": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php70": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php71": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php72": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php73": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php74": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php80": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php81": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php82": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php83": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php84": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "php85": { "arches": ["amd64", "386", "arm64", "armv7"] },
+
+  "openresty117": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "openresty119": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "openresty121": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "openresty125": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "openresty127": { "arches": ["amd64", "386", "arm64", "armv7"] },
+  "openresty131": { "arches": ["amd64", "386", "arm64", "armv7"] }
+}

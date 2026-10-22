@@ -1,0 +1,31 @@
+name: Cleanup tags
+
+# 手动清理 Docker Hub 上构建遗留的中间 tag（<branch>-<archc>-<run_id>）。
+# 与 build.yml 共用并发组，因此不会删到正在构建的镜像。
+# build.yml 每次运行结束也会自动清理（prune-tags job），本工作流用于立即清历史残留。
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只列出待删除的 tag，不实际删除'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-images
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: prune intermediate tags
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        run: .github/scripts/prune-tags.sh --all ${{ inputs.dry_run && '--dry-run' || '' }}
