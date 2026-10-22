@@ -308,13 +308,13 @@ ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 
-FROM --platform=$TARGETPLATFORM alpine:3.23.5 AS tmp
+FROM --platform=$TARGETPLATFORM alpine:3.22.7 AS tmp
 
 COPY --from=stage-2 /tmp/pack.tar /tmp/pack.tar
 
 RUN tar xf /tmp/pack.tar -C /
 
-FROM --platform=$TARGETPLATFORM alpine:3.23.5
+FROM --platform=$TARGETPLATFORM alpine:3.22.7
 ARG BRANCH
 ARG ARCHC
 ARG PHP_INI_DIR

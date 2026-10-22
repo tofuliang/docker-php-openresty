@@ -1,4 +1,6 @@
-FROM --platform=$TARGETPLATFORM alpine:3.23.5
+# 固定在 3.22：Alpine 3.23 的 apk trigger 在 QEMU arm64 下会 SIGSEGV
+# （docker-library/ruby#521），只影响交叉构建。
+FROM --platform=$TARGETPLATFORM alpine:3.22.7
 
 LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 

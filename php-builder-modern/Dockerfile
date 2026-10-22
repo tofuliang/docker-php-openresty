@@ -2,7 +2,9 @@
 # https://github.com/docker-library/php
 # 与 php-builder 相同，但使用较新的 Alpine，供 PHP 8.4+ 使用。
 # php-builder 基于 alpine:3.14，只有旧版 PHP 才需要留在旧工具链上。
-FROM --platform=$TARGETPLATFORM alpine:3.23.5
+# 固定在 3.22：Alpine 3.23 的 apk trigger 在 QEMU arm64 下会 SIGSEGV
+# （docker-library/ruby#521），只影响交叉构建，与本镜像内容无关。
+FROM --platform=$TARGETPLATFORM alpine:3.22.7
 
 # Docker Build Arguments
 

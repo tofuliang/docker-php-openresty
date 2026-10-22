@@ -1,9 +1,11 @@
 ### STAGE-1-BEGIN
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
+# 固定在 3.22：Alpine 3.23 的 apk trigger 在 QEMU arm64 下会 SIGSEGV
+# （docker-library/ruby#521），只影响交叉构建。
 
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.23.5"
+ARG RESTY_IMAGE_TAG="3.22.7"
 
 FROM --platform=$TARGETPLATFORM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG} AS build
 
@@ -12,7 +14,7 @@ LABEL maintainer="tofuliang <tofuliang@gmail.com>"
 # Docker Build Arguments
 ARG TARGETARCH
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.23.5"
+ARG RESTY_IMAGE_TAG="3.22.7"
 ARG RESTY_VERSION="1.31.1.1"
 # https://github.com/openresty/openresty-packaging/blob/master/alpine/openresty-openssl3/APKBUILD
 ARG RESTY_OPENSSL_VERSION="3.5.8"
