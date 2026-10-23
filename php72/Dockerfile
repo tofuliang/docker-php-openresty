@@ -23,8 +23,8 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-7.2.34.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-7.2.34.tar.xz.asc/from/this/mirror"
+ARG PHP_URL="https://museum.php.net/php7/php-7.2.34.tar.xz"
+ARG PHP_ASC_URL="https://museum.php.net/php7/php-7.2.34.tar.xz.asc"
 ARG PHP_SHA256="409e11bc6a2c18707dfc44bc61c820ddfd81e17481470f3405ee7822d8379903"
 ARG PHP_MD5=""
 
