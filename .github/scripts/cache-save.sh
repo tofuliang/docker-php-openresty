@@ -9,13 +9,14 @@
 # 任一步失败都保留旧指针，旧缓存继续可用。
 #
 # 环境：GITHUB_REPOSITORY、REPO_TOKEN、LOOP_DEVICE（来自 restore）
+# 前提：release(cache) 已存在（首次部署需手工创建，restore/构建不依赖它）。
 set -uo pipefail
 
 key=${1:?cache key is required}
 ROOT=${CACHE_ROOT:-/mnt}
 IMG="$ROOT/php.img"
 REPO=${GITHUB_REPOSITORY:?}
-TOKEN=${REPO_TOKEN:-${GITHUB_TOKEN:-}}
+TOKEN=${REPO_TOKEN:-}
 
 if [ -z "$TOKEN" ]; then
   echo "::error::REPO_TOKEN is required to upload the cache"

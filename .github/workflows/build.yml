@@ -41,7 +41,7 @@ concurrency:
 env:
   IMAGE: tofuliang/docker-php-openresty
   IMAGE_SIZE: 25g
-  RUN_TAG: ${{ github.run_id }}-${{ github.run_attempt }}
+  RUN_TAG: ${{ github.run_id }}
 
 jobs:
   prepare:
@@ -55,6 +55,10 @@ jobs:
       merge: ${{ steps.plan.outputs.merge }}
     steps:
       - uses: actions/checkout@v4
+      - name: preflight
+        run: |
+          bash -n .github/scripts/*.sh
+          jq empty .github/branches.json
       - id: plan
         env:
           INPUT: ${{ inputs.branches }}
@@ -62,6 +66,9 @@ jobs:
         run: .github/scripts/prepare-matrix.sh
 
   prune-cache:
+    needs: prepare
+    # 只做缓存清理，失败不应判负整次构建；错误仍以 ::error:: 出现在注解里
+    continue-on-error: true
     if: github.event_name != 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -101,6 +108,7 @@ jobs:
         run: .github/scripts/build.sh "${{ matrix.branch }}"
       - name: save build cache
         if: always()
+        continue-on-error: true
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: .github/scripts/cache-save.sh "${{ matrix.branch }}"
@@ -138,6 +146,7 @@ jobs:
         run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.arch }}"
       - name: save build cache
         if: always()
+        continue-on-error: true
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: .github/scripts/cache-save.sh "${{ matrix.branch }}-${{ matrix.archc }}"
@@ -184,6 +193,7 @@ jobs:
         run: .github/scripts/build.sh php-modern
       - name: save build cache
         if: always()
+        continue-on-error: true
         env:
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: .github/scripts/cache-save.sh php-modern

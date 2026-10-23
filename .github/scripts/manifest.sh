@@ -45,15 +45,25 @@ status=0
 for branch in "${branches[@]}"; do
   mapfile -t arches < <(jq -r --arg b "$branch" '.[$b].arches[]' "$CONFIG")
   images=()
+  archcs=()
   missing=()
   for arch in "${arches[@]}"; do
-    tag="${branch}-$(archc_of "$arch")-${RUN_TAG}"
+    if ! archc=$(archc_of "$arch"); then
+      echo "::error::unknown arch '${arch}' for '${branch}'"
+      missing=()
+      archcs=()
+      status=1
+      break
+    fi
+    archcs+=("$archc")
+    tag="${branch}-${archc}-${RUN_TAG}"
     if docker buildx imagetools inspect "${IMAGE}:${tag}" >/dev/null 2>&1; then
       images+=("${IMAGE}:${tag}")
     else
       missing+=("$arch")
     fi
   done
+  [ ${#archcs[@]} -eq ${#arches[@]} ] || continue
 
   if [ ${#missing[@]} -gt 0 ]; then
     echo "::error::${branch} incomplete, missing: ${missing[*]}"
@@ -77,8 +87,8 @@ for branch in "${branches[@]}"; do
   fi
 
   docker buildx imagetools inspect "${IMAGE}:${branch}" | head -12
-  for arch in "${arches[@]}"; do
-    delete_tag "${branch}-$(archc_of "$arch")-${RUN_TAG}"
+  for archc in "${archcs[@]}"; do
+    delete_tag "${branch}-${archc}-${RUN_TAG}"
   done
 done
 

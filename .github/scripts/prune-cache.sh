@@ -13,7 +13,7 @@ set -uo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=${GITHUB_REPOSITORY:?}
-TOKEN=${REPO_TOKEN:-${GITHUB_TOKEN:-}}
+TOKEN=${REPO_TOKEN:-}
 apply=0
 [ "${1:-}" = "--apply" ] && apply=1
 
@@ -28,8 +28,12 @@ source "$ROOT/.github/scripts/cache-lib.sh"
 allowed_file=$(mktemp)
 trap 'rm -f "$allowed_file"' EXIT
 
-mapfile -t rows < <(jq -r 'to_entries[] | "\(.key)\t\(.value.mode // "single")\t\(.value.arches | join(" "))"' \
-  "$ROOT/.github/branches.json")
+if ! rows_output=$(jq -r 'to_entries[] | "\(.key)\t\(.value.mode // "single")\t\(.value.arches | join(" "))"' \
+  "$ROOT/.github/branches.json"); then
+  echo "::error::invalid .github/branches.json"
+  exit 1
+fi
+mapfile -t rows <<<"$rows_output"
 keys=()
 for row in "${rows[@]}"; do
   IFS=$'\t' read -r branch mode arches <<<"$row"
@@ -45,14 +49,14 @@ for row in "${rows[@]}"; do
     done
   fi
 done
-printf '%s\n' "${keys[@]}" | sort -u >"$allowed_file"
-
-allowed=$(wc -l <"$allowed_file" | tr -d ' ')
-echo "configured cache keys: ${allowed}"
-if [ "$allowed" -eq 0 ]; then
+if [ ${#keys[@]} -eq 0 ]; then
   echo "::error::no cache keys derived from branches.json, refusing to prune"
   exit 1
 fi
+printf '%s\n' "${keys[@]}" | sort -u >"$allowed_file"
+
+allowed=$(grep -c . "$allowed_file" || true)
+echo "configured cache keys: ${allowed}"
 
 rid=$(release_id) || exit 1
 if [ -z "$rid" ]; then
