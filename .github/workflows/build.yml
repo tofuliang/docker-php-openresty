@@ -7,6 +7,10 @@ name: Build images
 #   images            其余分支：每个架构一个 job，arm64/armv7 跑在原生 arm runner
 #   manifest-images   逐分支合成多架构 manifest（缺架构则不覆盖、不删除中间 tag）
 #   modern            php-modern 依赖上面合成好的 phpNN manifest
+#
+# 每个构建 job 先恢复自己的 btrfs loop 镜像（/mnt/php.img，release cache 分片），
+# 再把它 bind 到 /var/lib/docker 与 /var/lib/containerd；job 结束前重新压缩上传。
+# 缓存 key = <branch>（多架构）或 <branch>-<archc>（单架构），不同 runner 互不干扰。
 
 on:
   repository_dispatch:
@@ -19,7 +23,7 @@ on:
         default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-images
@@ -27,6 +31,7 @@ concurrency:
 
 env:
   IMAGE: tofuliang/docker-php-openresty
+  IMAGE_SIZE: 25g
 
 jobs:
   prepare:
@@ -54,6 +59,12 @@ jobs:
         branch: ${{ fromJson(needs.prepare.outputs.builders) }}
     steps:
       - uses: actions/checkout@v4
+      - name: cache tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd btrfs-progs
+      - name: restore build cache
+        run: .github/scripts/cache-restore.sh "${{ matrix.branch }}"
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -62,7 +73,13 @@ jobs:
         run: docker run --privileged --rm tonistiigi/binfmt:latest --install all
       - name: buildx
         run: docker buildx create --name builder --driver docker-container --use
-      - run: .github/scripts/build.sh "${{ matrix.branch }}"
+      - name: build
+        run: .github/scripts/build.sh "${{ matrix.branch }}"
+      - name: save build cache
+        if: always()
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: .github/scripts/cache-save.sh "${{ matrix.branch }}"
 
   images:
     needs: [prepare, builders]
@@ -74,6 +91,12 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - name: cache tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd btrfs-progs
+      - name: restore build cache
+        run: .github/scripts/cache-restore.sh "${{ matrix.branch }}-${{ matrix.archc }}"
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -83,7 +106,13 @@ jobs:
         run: docker run --privileged --rm tonistiigi/binfmt:latest --install arm
       - name: buildx
         run: docker buildx create --name builder --driver docker-container --use
-      - run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.archc }}"
+      - name: build
+        run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.archc }}"
+      - name: save build cache
+        if: always()
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: .github/scripts/cache-save.sh "${{ matrix.branch }}-${{ matrix.archc }}"
 
   manifest-images:
     needs: [prepare, images]
@@ -107,6 +136,12 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
+      - name: cache tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd btrfs-progs
+      - name: restore build cache
+        run: .github/scripts/cache-restore.sh php-modern
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -115,4 +150,10 @@ jobs:
         run: docker run --privileged --rm tonistiigi/binfmt:latest --install all
       - name: buildx
         run: docker buildx create --name builder --driver docker-container --use
-      - run: .github/scripts/build.sh php-modern
+      - name: build
+        run: .github/scripts/build.sh php-modern
+      - name: save build cache
+        if: always()
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: .github/scripts/cache-save.sh php-modern

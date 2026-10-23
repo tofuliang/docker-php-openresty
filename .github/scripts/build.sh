@@ -4,7 +4,8 @@
 #   build.sh <branch>            # 多架构（用于 php-builder / php-modern）
 #   build.sh <branch> <archc>    # 单架构，archc 形如 linux_arm64
 #
-# 缓存放在 registry（IMAGE:cache-<branch>[-<archc>]），不再依赖 loop 镜像。
+# 构建缓存由 cache-restore.sh / cache-save.sh 维护的 btrfs loop 镜像承载，
+# 这里只负责 buildx 参数。
 set -euo pipefail
 
 branch=${1:?branch is required}
@@ -19,7 +20,6 @@ case "$branch" in
 esac
 
 if [ -n "$archc" ]; then
-  platform=""
   case "$archc" in
     linux_amd64) platform=linux/amd64 ;;
     linux_386) platform=linux/386 ;;
@@ -28,16 +28,9 @@ if [ -n "$archc" ]; then
     *) echo "unknown archc: $archc" >&2; exit 1 ;;
   esac
   tag="${branch}-${archc}"
-  cache="cache-${branch}-${archc}"
 else
   platform="linux/amd64,linux/386,linux/arm64,linux/arm/v7"
   tag="${branch}"
-  cache="cache-${branch}"
-fi
-
-cache_args=()
-if docker buildx imagetools inspect "${IMAGE}:${cache}" >/dev/null 2>&1; then
-  cache_args+=(--cache-from "type=registry,ref=${IMAGE}:${cache}")
 fi
 
 echo "building ${IMAGE}:${tag} for ${platform}"
@@ -46,7 +39,5 @@ docker buildx build \
   "${build_args[@]}" \
   --provenance=false --sbom=false \
   -t "${IMAGE}:${tag}" \
-  "${cache_args[@]}" \
-  --cache-to "type=registry,ref=${IMAGE}:${cache},mode=max" \
   --push \
   "${ROOT}/${branch}"
