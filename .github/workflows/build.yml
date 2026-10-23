@@ -7,6 +7,7 @@ name: Build images
 #   images            其余分支：每个架构一个 job，arm64/armv7 跑在原生 arm runner
 #   manifest-images   逐分支合成多架构 manifest（缺架构则不覆盖、不删除中间 tag）
 #   modern            php-modern 依赖上面合成好的 phpNN manifest
+#   prune-cache       删除 release(cache) 中不再被 branches.json 引用的缓存分片
 #
 # 每个构建 job 先恢复自己的 btrfs loop 镜像（/mnt/php.img，release cache 分片），
 # 再把它 bind 到 /var/lib/docker 与 /var/lib/containerd；job 结束前重新压缩上传。
@@ -48,6 +49,15 @@ jobs:
           INPUT: ${{ inputs.branches }}
           PAYLOAD: ${{ toJSON(github.event.client_payload.branches) }}
         run: .github/scripts/prepare-matrix.sh
+
+  prune-cache:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: prune stale cache assets
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: .github/scripts/prune-cache.sh --apply
 
   builders:
     needs: prepare
