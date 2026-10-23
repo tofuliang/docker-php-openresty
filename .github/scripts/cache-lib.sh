@@ -25,7 +25,8 @@ release_id() {
   esac
 }
 
-# list_assets <release_id> → 每行 "id<TAB>name<TAB>size"，自动翻页
+# list_assets <release_id> → 每行 "id<TAB>name<TAB>size"，自动翻页。
+# 注意：这个端点返回的是裸数组，不是 {"assets": [...]}。
 list_assets() {
   local id=$1 page=1 resp code body count
   while :; do
@@ -37,9 +38,16 @@ list_assets() {
       echo "::error::cannot list release assets (HTTP ${code})" >&2
       return 1
     fi
-    count=$(printf '%s' "$body" | jq '.assets | length')
-    printf '%s' "$body" | jq -r '.assets[] | [.id, .name, .size] | @tsv'
+    count=$(printf '%s' "$body" | jq -r 'if type == "array" then length else "" end' 2>/dev/null)
+    case "$count" in
+      '' | *[!0-9]*)
+        echo "::error::unexpected assets response (expected a JSON array)" >&2
+        return 1
+        ;;
+    esac
+    printf '%s' "$body" | jq -r '.[] | [.id, .name, .size] | @tsv'
     [ "$count" -lt 100 ] && break
     page=$((page + 1))
+    [ "$page" -gt 50 ] && break
   done
 }
