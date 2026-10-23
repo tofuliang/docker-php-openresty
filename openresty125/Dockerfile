@@ -1,4 +1,3 @@
-### STAGE-1-BEGIN
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 
@@ -291,10 +290,3 @@ EXPOSE 80
 EXPOSE 443
 
 ENTRYPOINT ["/init"]
-
-### STAGE-1-END
-
-### PUSH-START
-ARG ARCHC
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty125-1-${ARCHC} AS stage-3
-### PUSH-END

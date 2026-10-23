@@ -1,18 +1,13 @@
-### ARG-BEGIN
 ARG BRANCH="85"
-ARG ARCHC
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 ARG TARGETARCH
 ARG LOG_FILE="/tmp/${BRANCH}.base.${TARGETARCH}.log"
-### ARG-END
 
-### STAGE-1-BEGIN
 
 # Dockerfile - alpine
 # https://github.com/docker-library/php
 FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder-modern AS build
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -196,11 +191,9 @@ RUN set -x && echo $TARGETARCH \
 
 # tideways_xhprof 5.0.4（2020 年最后一个版本）的 config.m4 在 PHP 8.5 下
 # configure 直接语法错误，上游已停更，8.4/8.5 分支不安装该扩展。
-### STAGE-1-END
 
-### STAGE-2-BEGIN
+FROM build AS stage-2
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -301,11 +294,8 @@ RUN set -x && echo $TARGETARCH \
     fi \
     fi \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
-### STAGE-2-END
 
-### STAGE-3-BEGIN
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 
@@ -317,7 +307,6 @@ RUN tar xf /tmp/pack.tar -C /
 
 FROM --platform=$TARGETPLATFORM alpine:3.22.7
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 
@@ -420,9 +409,3 @@ ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 EXPOSE 90${BRANCH}
 
 ENTRYPOINT ["/init"]
-
-### STAGE-3-END
-
-### PUSH-START
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php${BRANCH}-3-${ARCHC} AS stage-3
-### PUSH-END

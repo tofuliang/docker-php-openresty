@@ -1,0 +1,118 @@
+name: Build images
+
+# 由 update.yml 通过 repository_dispatch(build) 触发，也可手动指定分支。
+# 设计：
+#   prepare           解析分支列表，生成矩阵（每个分支的架构策略见 .github/branches.json）
+#   builders          php-builder*：x86 上一次性构建多架构并直接推 manifest
+#   images            其余分支：每个架构一个 job，arm64/armv7 跑在原生 arm runner
+#   manifest-images   逐分支合成多架构 manifest（缺架构则不覆盖、不删除中间 tag）
+#   modern            php-modern 依赖上面合成好的 phpNN manifest
+
+on:
+  repository_dispatch:
+    types: [build]
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: '空格分隔的分支名，留空表示 branches.json 中的全部分支'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-images
+  cancel-in-progress: false
+
+env:
+  IMAGE: tofuliang/docker-php-openresty
+
+jobs:
+  prepare:
+    runs-on: ubuntu-26.04
+    outputs:
+      builders: ${{ steps.plan.outputs.builders }}
+      images: ${{ steps.plan.outputs.images }}
+      modern: ${{ steps.plan.outputs.modern }}
+      merge: ${{ steps.plan.outputs.merge }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          INPUT: ${{ inputs.branches }}
+          PAYLOAD: ${{ toJSON(github.event.client_payload.branches) }}
+        run: .github/scripts/prepare-matrix.sh
+
+  builders:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.builders != '[]' }}
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.prepare.outputs.builders) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: QEMU
+        run: docker run --privileged --rm tonistiigi/binfmt:latest --install all
+      - name: buildx
+        run: docker buildx create --name builder --driver docker-container --use
+      - run: .github/scripts/build.sh "${{ matrix.branch }}"
+
+  images:
+    needs: [prepare, builders]
+    if: ${{ always() && needs.prepare.outputs.images != '[]' && (needs.builders.result == 'success' || needs.builders.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare.outputs.images) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: QEMU (armv7)
+        if: matrix.arch == 'armv7'
+        run: docker run --privileged --rm tonistiigi/binfmt:latest --install arm
+      - name: buildx
+        run: docker buildx create --name builder --driver docker-container --use
+      - run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.archc }}"
+
+  manifest-images:
+    needs: [prepare, images]
+    if: ${{ always() && needs.prepare.outputs.merge != '[]' }}
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: merge manifests
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        run: .github/scripts/manifest.sh ${{ join(fromJson(needs.prepare.outputs.merge), ' ') }}
+
+  modern:
+    needs: [prepare, manifest-images]
+    if: ${{ needs.prepare.outputs.modern == 'true' && (needs.manifest-images.result == 'success' || needs.manifest-images.result == 'skipped') }}
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: QEMU
+        run: docker run --privileged --rm tonistiigi/binfmt:latest --install all
+      - name: buildx
+        run: docker buildx create --name builder --driver docker-container --use
+      - run: .github/scripts/build.sh php-modern

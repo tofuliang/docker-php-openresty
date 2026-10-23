@@ -1,4 +1,3 @@
-### STAGE-1-BEGIN
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 # 固定在 3.22：Alpine 3.23 的 apk trigger 在 QEMU arm64 下会 SIGSEGV
@@ -310,10 +309,3 @@ EXPOSE 80
 EXPOSE 443
 
 ENTRYPOINT ["/init"]
-
-### STAGE-1-END
-
-### PUSH-START
-ARG ARCHC
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:openresty131-1-${ARCHC} AS stage-3
-### PUSH-END

@@ -73,6 +73,6 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/dispatches" \
-              -d '{"event_type":"build","client_payload":{"build_branches_str": "[\"php-builder\",\"php-builder-modern\"]","build_branches":["php-builder","php-builder-modern"],"branches": "[\"php-builder\",\"php-builder-modern\",\"openresty131\",\"php85\",\"php84\",\"php83\",\"php82\",\"php81\",\"php80\",\"php74\",\"php73\",\"php72\",\"php71\",\"php70\",\"php-modern\"]","next_build_num":4}}'
+              -d '{"event_type":"build","client_payload":{"branches":["php-builder","php-builder-modern","openresty131","php85","php84","php83","php82","php81","php80","php74","php73","php72","php71","php70","php-modern"]}}'
           fi
           exit $rc
