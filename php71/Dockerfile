@@ -3,7 +3,6 @@ ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 ARG TARGETARCH
 ARG LOG_FILE="/tmp/${BRANCH}.base.${TARGETARCH}.log"
 
-
 # Dockerfile - alpine
 # https://github.com/docker-library/php
 FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder AS build
@@ -273,10 +272,6 @@ RUN set -x && echo $TARGETARCH \
     fi \
     fi \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
-
-ARG BRANCH
-ARG PHP_INI_DIR
-ARG TARGETARCH
 
 FROM --platform=$TARGETPLATFORM alpine:3.14 AS tmp
 

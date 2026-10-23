@@ -1,17 +1,21 @@
 name: Build images
 
-# 由 update.yml 通过 repository_dispatch(build) 触发，也可手动指定分支。
+# 由 update.yml 通过 repository_dispatch(build) 触发；branches.json 变更时也会触发；
+# 也可手动指定分支（仅仓库所有者）。
+#
 # 设计：
 #   prepare           解析分支列表，生成矩阵（每个分支的架构策略见 .github/branches.json）
+#   prune-cache       删除 release(cache) 中不再被 branches.json 引用的缓存分片
 #   builders          php-builder*：x86 上一次性构建多架构并直接推 manifest
 #   images            其余分支：每个架构一个 job，arm64/armv7 跑在原生 arm runner
 #   manifest-images   逐分支合成多架构 manifest（缺架构则不覆盖、不删除中间 tag）
 #   modern            php-modern 依赖上面合成好的 phpNN manifest
-#   prune-cache       删除 release(cache) 中不再被 branches.json 引用的缓存分片
 #
 # 每个构建 job 先恢复自己的 btrfs loop 镜像（/mnt/php.img，release cache 分片），
 # 再把它 bind 到 /var/lib/docker 与 /var/lib/containerd；job 结束前重新压缩上传。
 # 缓存 key = <branch>（多架构）或 <branch>-<archc>（单架构），不同 runner 互不干扰。
+#
+# 单架构镜像 tag 带 RUN_TAG 后缀，manifest 只可能合并本次运行真实构建出的架构。
 
 on:
   repository_dispatch:
@@ -19,9 +23,13 @@ on:
   workflow_dispatch:
     inputs:
       branches:
-        description: '空格分隔的分支名，留空表示 branches.json 中的全部分支'
+        description: '空格或逗号分隔的分支名，留空表示 branches.json 中的全部分支'
         type: string
         default: ''
+  push:
+    branches: [master]
+    paths:
+      - '.github/branches.json'
 
 permissions:
   contents: write
@@ -33,10 +41,13 @@ concurrency:
 env:
   IMAGE: tofuliang/docker-php-openresty
   IMAGE_SIZE: 25g
+  RUN_TAG: ${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
   prepare:
-    runs-on: ubuntu-26.04
+    if: github.event_name != 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       builders: ${{ steps.plan.outputs.builders }}
       images: ${{ steps.plan.outputs.images }}
@@ -51,7 +62,9 @@ jobs:
         run: .github/scripts/prepare-matrix.sh
 
   prune-cache:
-    runs-on: ubuntu-26.04
+    if: github.event_name != 'workflow_dispatch' || github.event.repository.owner.id == github.event.sender.id
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: prune stale cache assets
@@ -62,7 +75,8 @@ jobs:
   builders:
     needs: prepare
     if: ${{ needs.prepare.outputs.builders != '[]' }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
@@ -93,14 +107,18 @@ jobs:
 
   images:
     needs: [prepare, builders]
-    if: ${{ always() && needs.prepare.outputs.images != '[]' && (needs.builders.result == 'success' || needs.builders.result == 'skipped') }}
+    if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.images != '[]' }}
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.images) }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
+      - name: note builder status
+        if: needs.builders.result == 'failure'
+        run: echo "::warning::builders failed; branches that FROM php-builder use the last published tag"
       - name: cache tooling
         run: |
           sudo apt-get update -qq
@@ -117,7 +135,7 @@ jobs:
       - name: buildx
         run: docker buildx create --name builder --driver docker-container --use
       - name: build
-        run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.archc }}"
+        run: .github/scripts/build.sh "${{ matrix.branch }}" "${{ matrix.arch }}"
       - name: save build cache
         if: always()
         env:
@@ -126,8 +144,9 @@ jobs:
 
   manifest-images:
     needs: [prepare, images]
-    if: ${{ always() && needs.prepare.outputs.merge != '[]' }}
-    runs-on: ubuntu-26.04
+    if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.merge != '[]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
@@ -142,8 +161,9 @@ jobs:
 
   modern:
     needs: [prepare, manifest-images]
-    if: ${{ needs.prepare.outputs.modern == 'true' && (needs.manifest-images.result == 'success' || needs.manifest-images.result == 'skipped') }}
-    runs-on: ubuntu-26.04
+    if: ${{ needs.prepare.result == 'success' && needs.prepare.outputs.modern == 'true' && (needs.manifest-images.result == 'success' || needs.manifest-images.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - name: cache tooling
