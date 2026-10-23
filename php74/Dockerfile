@@ -208,7 +208,7 @@ ARG JOBS=2
 # 使用pecl安装扩展
 ARG MAKE="make -j$JOBS"
 RUN set -x && echo $TARGETARCH \
-    && pecl install redis >> ${LOG_FILE} 2>&1
+    && pecl install redis-6.1.0 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install yac >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
