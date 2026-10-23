@@ -5,7 +5,7 @@
 # 缓存由 cache-save.sh 写成 release(cache) 上的两段结构：
 #   php.<key>.img.zst.current        指针，内容为当前代号
 #   php.<key>.img.zst.<gen>.NN       该代号的分片
-# 早期没有指针的 php.<key>.img.zst.NN 仍然可以被恢复。
+# 没有指针即视为没有缓存——旧格式镜像不可信，见下方说明。
 #
 # 环境：GITHUB_REPOSITORY、GITHUB_ENV、IMAGE_SIZE（默认 25g）
 set -euo pipefail
@@ -61,12 +61,8 @@ if [ -n "$gen" ]; then
   fi
 fi
 
-if [ "$restored" -ne 1 ] && curl -fsI --retry 2 --max-time 30 "${BASE}.01" >/dev/null 2>&1; then
-  echo "restoring legacy cache ${key} (no generation pointer)"
-  if fetch_chunks ""; then
-    restored=1
-  fi
-fi
+# 不再兼容旧格式（php.<key>.img.zst.NN）：那是上一代流水线的镜像，
+# 往往已经被写满，恢复后会让新构建直接 ENOSPC（实测 php-builder 只剩 27 MiB）。
 
 if [ "$restored" -ne 1 ] || [ ! -s "$IMG" ]; then
   echo "no usable cache for ${key}, creating a ${size}-byte image"

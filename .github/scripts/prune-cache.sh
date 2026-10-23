@@ -75,6 +75,20 @@ while IFS=$'\t' read -r id name size; do
   esac
   key=${name#php.}
   key=${key%.img.zst.*}
+  # 只认新格式：<key>.current 或 <key>.<gen>.<NN>；旧流水线的 <key>.NN 一律删除
+  case "$name" in
+    php."${key}".img.zst.current | php."${key}".img.zst.[0-9]*.[0-9]*) ;;
+    *)
+      echo "stale: ${name} (${size} bytes, legacy format)"
+      stale=$((stale + 1))
+      freed=$((freed + size))
+      if [ "$apply" -eq 1 ]; then
+        curl -fsS -o /dev/null -X DELETE -H "$AUTH" "$API/releases/assets/${id}" ||
+          echo "::warning::failed to delete asset ${id} (${name})"
+      fi
+      continue
+      ;;
+  esac
   grep -qxF "$key" "$allowed_file" && continue
 
   echo "stale: ${name} (${size} bytes, key=${key})"
