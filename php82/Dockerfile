@@ -227,6 +227,7 @@ RUN set -x && echo $TARGETARCH \
     cd /usr/src && pecl download swoole-6.2.3 \
     && tar xzf /usr/src/swoole-6.2.3.tgz -C /usr/src \
     && cd /usr/src/swoole-6.2.3 \
+    && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
@@ -236,6 +237,7 @@ RUN set -x && echo $TARGETARCH \
     cd /usr/src && pecl download swoole-6.2.3 \
     && tar xzf /usr/src/swoole-6.2.3.tgz -C /usr/src \
     && cd /usr/src/swoole-6.2.3 \
+    && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole; \
