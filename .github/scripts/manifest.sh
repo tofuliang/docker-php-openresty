@@ -27,7 +27,7 @@ fi
 
 # 调试构建把 manifest 发到 debug-<branch>，绝不覆盖线上 tag。
 tag_prefix=""
-[ -n "${DEBUG:-}" ] && tag_prefix="debug-"
+[ "${DEBUG:-}" = "true" ] && tag_prefix="debug-"
 
 hub_token=""
 if [ -n "${DOCKER_HUB_USERNAME:-}" ] && [ -n "${DOCKER_HUB_PASSWORD:-}" ]; then
