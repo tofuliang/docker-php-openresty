@@ -10,7 +10,9 @@ CONFIG="$ROOT/.github/branches.json"
 source "$ROOT/.github/scripts/arch.sh"
 
 requested=()
-if [ -n "${INPUT:-}" ]; then
+if [ -n "${DEBUG_BRANCH:-}" ]; then
+  requested=("$DEBUG_BRANCH")
+elif [ -n "${INPUT:-}" ]; then
   read -r -a requested <<<"${INPUT//,/ }"
 elif [ -n "${PAYLOAD:-}" ] && [ "${PAYLOAD}" != "null" ]; then
   # 兼容两种派发格式：JSON 数组，或 JSON 编码后的字符串
@@ -21,7 +23,7 @@ elif [ -n "${PAYLOAD:-}" ] && [ "${PAYLOAD}" != "null" ]; then
   mapfile -t requested < <(jq -r '.[]' <<<"${payload}")
 fi
 explicit=0
-if [ ${#requested[@]} -gt 0 ]; then explicit=1; fi
+if [ ${#requested[@]} -gt 0 ] && [ -z "${DEBUG_BRANCH:-}" ]; then explicit=1; fi
 if [ ${#requested[@]} -eq 0 ]; then
   mapfile -t requested < <(jq -r 'keys[]' "$CONFIG")
 fi

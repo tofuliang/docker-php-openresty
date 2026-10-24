@@ -26,6 +26,10 @@ on:
         description: '空格或逗号分隔的分支名，留空表示 branches.json 中的全部分支'
         type: string
         default: ''
+      debug_branch:
+        description: '调试模式：只构建这一个分支（留空 = 正常模式）'
+        type: string
+        default: ''
   push:
     branches: [master]
     paths:
@@ -38,10 +42,14 @@ concurrency:
   group: build-images
   cancel-in-progress: false
 
+# 调试模式：DEBUG_BRANCH 非空时 fail-fast 打开（见 env.DEBUG）
+
 env:
   IMAGE: tofuliang/docker-php-openresty
   IMAGE_SIZE: 25g
   RUN_TAG: ${{ github.run_id }}
+  DEBUG: ${{ inputs.debug_branch != '' }}
+  DEBUG_FAIL_FAST: ${{ inputs.debug_branch != '' }}
 
 jobs:
   prepare:
@@ -63,6 +71,7 @@ jobs:
         env:
           INPUT: ${{ inputs.branches }}
           PAYLOAD: ${{ toJSON(github.event.client_payload.branches) }}
+          DEBUG_BRANCH: ${{ inputs.debug_branch }}
         run: .github/scripts/prepare-matrix.sh
 
   prune-cache:
@@ -85,7 +94,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 350
     strategy:
-      fail-fast: false
+      fail-fast: ${{ fromJSON(env.DEBUG_FAIL_FAST) }}
       matrix:
         branch: ${{ fromJson(needs.prepare.outputs.builders) }}
     steps:
@@ -117,7 +126,7 @@ jobs:
     needs: [prepare, builders]
     if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.images != '[]' }}
     strategy:
-      fail-fast: false
+      fail-fast: ${{ fromJSON(env.DEBUG_FAIL_FAST) }}
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.images) }}
     runs-on: ${{ matrix.runner }}
