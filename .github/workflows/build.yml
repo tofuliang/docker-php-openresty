@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 350
     strategy:
-      fail-fast: ${{ fromJSON(env.DEBUG_FAIL_FAST) }}
+      fail-fast: ${{ inputs.debug_branch != '' }}
       matrix:
         branch: ${{ fromJson(needs.prepare.outputs.builders) }}
     steps:
@@ -126,7 +126,7 @@ jobs:
     needs: [prepare, builders]
     if: ${{ always() && needs.prepare.result == 'success' && needs.prepare.outputs.images != '[]' }}
     strategy:
-      fail-fast: ${{ fromJSON(env.DEBUG_FAIL_FAST) }}
+      fail-fast: ${{ inputs.debug_branch != '' }}
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.images) }}
     runs-on: ${{ matrix.runner }}
