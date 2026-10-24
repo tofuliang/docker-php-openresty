@@ -25,6 +25,10 @@ if [ ${#branches[@]} -eq 0 ]; then
 fi
 : "${RUN_TAG:?RUN_TAG is required}"
 
+# 调试构建把 manifest 发到 debug-<branch>，绝不覆盖线上 tag。
+tag_prefix=""
+[ -n "${DEBUG:-}" ] && tag_prefix="debug-"
+
 hub_token=""
 if [ -n "${DOCKER_HUB_USERNAME:-}" ] && [ -n "${DOCKER_HUB_PASSWORD:-}" ]; then
   hub_token=$(curl -fsS -H 'Content-Type: application/json' -X POST \
@@ -72,12 +76,12 @@ for branch in "${branches[@]}"; do
   fi
 
   version=$("$ROOT/.github/scripts/version.sh" "$branch" || true)
-  tags=(-t "${IMAGE}:${branch}")
+  tags=(-t "${IMAGE}:${tag_prefix}${branch}")
   if [ -n "$version" ]; then
-    tags+=(-t "${IMAGE}:${branch}-${version}")
-    echo "merging ${branch} (${version}): ${arches[*]}"
+    tags+=(-t "${IMAGE}:${tag_prefix}${branch}-${version}")
+    echo "merging ${tag_prefix}${branch} (${version}): ${arches[*]}"
   else
-    echo "merging ${branch}: ${arches[*]}"
+    echo "merging ${tag_prefix}${branch}: ${arches[*]}"
   fi
 
   if ! docker buildx imagetools create "${tags[@]}" "${images[@]}"; then
@@ -86,7 +90,7 @@ for branch in "${branches[@]}"; do
     continue
   fi
 
-  docker buildx imagetools inspect "${IMAGE}:${branch}" | head -12
+  docker buildx imagetools inspect "${IMAGE}:${tag_prefix}${branch}" | head -12
   for archc in "${archcs[@]}"; do
     delete_tag "${branch}-${archc}-${RUN_TAG}"
   done
