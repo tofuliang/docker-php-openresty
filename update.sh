@@ -190,7 +190,11 @@ done <<<"$(echo "$ALL_RELEASES" |
 echo ""
 echo "Swoole version of Dockerfile is $LOCAL_SWOOLE_VER"
 echo ""
-echo "latest Swoole version compatible with PHP $LOCAL_PHP_VER is ${REMOTE_SWOOLE_VER:-none}"
+if [ -n "$REMOTE_SWOOLE_VER" ]; then
+  echo "latest Swoole version compatible with PHP $LOCAL_PHP_VER is $REMOTE_SWOOLE_VER"
+else
+  echo "Swoole $LOCAL_SWOOLE_VER is already the newest release compatible with PHP $LOCAL_PHP_VER"
+fi
 
 if [ -n "$REMOTE_SWOOLE_VER" ] && [ "$REMOTE_SWOOLE_VER" != "$LOCAL_SWOOLE_VER" ]; then
   echo ""
