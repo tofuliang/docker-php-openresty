@@ -1,18 +1,12 @@
-### ARG-BEGIN
 ARG BRANCH="74"
-ARG ARCHC
 ARG PHP_INI_DIR="/usr/local/etc/php${BRANCH}"
 ARG TARGETARCH
 ARG LOG_FILE="/tmp/${BRANCH}.base.${TARGETARCH}.log"
-### ARG-END
-
-### STAGE-1-BEGIN
 
 # Dockerfile - alpine
 # https://github.com/docker-library/php
 FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php-builder AS build
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -203,11 +197,9 @@ RUN set -x && echo $TARGETARCH \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable tideways_xhprof
-### STAGE-1-END
 
-### STAGE-2-BEGIN
+FROM build AS stage-2
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 ARG LOG_FILE
@@ -216,7 +208,7 @@ ARG JOBS=2
 # 使用pecl安装扩展
 ARG MAKE="make -j$JOBS"
 RUN set -x && echo $TARGETARCH \
-    && pecl install redis >> ${LOG_FILE} 2>&1
+    && pecl install redis-6.1.0 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install yac >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
@@ -224,7 +216,7 @@ RUN set -x && echo $TARGETARCH \
 RUN set -x && echo $TARGETARCH \
     && pecl install xdebug-3.1.6 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
-    && pecl install mongodb >> ${LOG_FILE} 2>&1
+    && pecl install mongodb-1.20.1 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
@@ -234,7 +226,7 @@ RUN set -x && echo $TARGETARCH \
     && cd /usr/src/swoole-4.8.13 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
-    && docker-php-ext-enable swoole; \
+    && docker-php-ext-enable swoole || { echo 'swoole build failed'; grep -B5 -E 'error:|Error [12]' ${LOG_FILE} | tail -n 80; tail -n 40 ${LOG_FILE}; exit 1; } \
     fi
 #    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
 #    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
@@ -282,13 +274,6 @@ RUN set -x && echo $TARGETARCH \
     && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
     done \
-    && while [ ! -f /upx_amd64.core ];do \
-    echo "getting amd64 upx package ..." \
-    && sleep 3 \
-    && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
-    && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
-    done \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size +1024 -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
@@ -297,13 +282,6 @@ RUN set -x && echo $TARGETARCH \
     fi \
     fi \
     && tar cf /tmp/pack.tar /usr/local/bin/composer /usr/local/bin/composer1 /usr/local/php${BRANCH}/bin /usr/local/php${BRANCH}/sbin /usr/local/php${BRANCH}/lib /usr/local/etc/php${BRANCH}
-### STAGE-2-END
-
-### STAGE-3-BEGIN
-ARG BRANCH
-ARG ARCHC
-ARG PHP_INI_DIR
-ARG TARGETARCH
 
 FROM --platform=$TARGETPLATFORM alpine:3.14 AS tmp
 
@@ -313,7 +291,6 @@ RUN tar xf /tmp/pack.tar -C /
 
 FROM --platform=$TARGETPLATFORM alpine:3.14
 ARG BRANCH
-ARG ARCHC
 ARG PHP_INI_DIR
 ARG TARGETARCH
 
@@ -347,13 +324,6 @@ RUN set -x && echo $TARGETARCH \
     && mkdir -p /tmp/upxd || true \
     && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep ${upxarch}_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxd \
     && mv "$(find /tmp/upxd -name 'upx' -type f)" /usr/bin/ && rm -fr /tmp/upxd; \
-    done \
-    && while [ ! -f /upx_amd64.core ];do \
-    echo "getting amd64 upx package ..." \
-    && sleep 3 \
-    && mkdir -p /tmp/upxamd64 || true \
-    && curl --output - -fSkL --retry 5 https://github.com$(curl https://github.com/upx/upx/releases |grep download|grep amd64_|grep -oE '/upx[^>]*xz'|head -1)| tar xJf - -C /tmp/upxamd64 \
-    && "$(find /tmp/upxamd64 -name 'upx' -type f)" -d /usr/bin/upx && touch /upx_amd64.core && rm -fr /tmp/upxamd64; \
     done \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*" -type f -perm +0111 -exec upx -d '{}' + || true; } \
@@ -416,9 +386,3 @@ ENV LD_PRELOAD=/usr/lib/preloadable_libiconv.so
 EXPOSE 90${BRANCH}
 
 ENTRYPOINT ["/init"]
-
-### STAGE-3-END
-
-### PUSH-START
-FROM --platform=$TARGETPLATFORM tofuliang/docker-php-openresty:php${BRANCH}-3-${ARCHC} AS stage-3
-### PUSH-END
