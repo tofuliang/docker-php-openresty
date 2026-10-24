@@ -230,7 +230,7 @@ RUN set -x && echo $TARGETARCH \
     && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
-    && docker-php-ext-enable swoole || { echo 'swoole build failed'; tail -n 60 ${LOG_FILE}; exit 1; } \
+    && docker-php-ext-enable swoole || { echo 'swoole build failed'; grep -B5 -E 'error:|Error [12]' ${LOG_FILE} | tail -n 80; tail -n 40 ${LOG_FILE}; exit 1; } \
     fi
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qarm" ] ;then \
@@ -240,7 +240,7 @@ RUN set -x && echo $TARGETARCH \
     && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
-    && docker-php-ext-enable swoole || { echo 'swoole build failed'; tail -n 60 ${LOG_FILE}; exit 1; } \
+    && docker-php-ext-enable swoole || { echo 'swoole build failed'; grep -B5 -E 'error:|Error [12]' ${LOG_FILE} | tail -n 80; tail -n 40 ${LOG_FILE}; exit 1; } \
     fi
 #    && curl -fSkL --retry 5 https://github.com/swoole/yasd/archive/refs/tags/v0.3.7.tar.gz -o /usr/src/yasd.tar.gz \
 #    && tar xzf /usr/src/yasd.tar.gz -C /usr/src \
