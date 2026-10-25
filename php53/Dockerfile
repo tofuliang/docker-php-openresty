@@ -90,9 +90,9 @@ RUN set -x \
     && apk add --no-cache --virtual .fetch-deps \
     gnupg \
     openssl \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted \
     gnu-libiconv \
-    && apk add --no-cache --virtual .build-tidy-deps --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
+    && apk add --no-cache --virtual .build-tidy-deps --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted \
     tidyhtml-dev \
     ; \
     \
@@ -247,7 +247,7 @@ RUN set -x \
     && { cd /usr/local/php${BRANCH}/lib/php;rm -fr `ls -a|grep -v extensions` || true; }
 
 RUN set -x \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted upx >/dev/null 2>&1 ||true \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETPLATFORM|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size +1024 -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
@@ -287,8 +287,8 @@ ENV PATH="/usr/local/bin:/usr/local/php${BRANCH}/bin:/usr/local/php${BRANCH}/sbi
 RUN set -x \
     && addgroup -g 82 -S www-data || true \
     && adduser -u 82 -D -S -G www-data www-data || true \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv tidyhtml \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted gnu-libiconv tidyhtml \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.10/community/ --allow-untrusted --virtual .upxd upx >/dev/null 2>&1 ||true \
     && apk add --no-cache --virtual .pack dpkg \
     && if [ "$(command -v upx)q" != "q" ];then \
     { find /usr/local  -name "php*"  -size +1024 -type f -perm +0111 -exec upx -d '{}' + || true; } \
@@ -304,7 +304,7 @@ RUN set -x \
     && apk add --no-cache logrotate sudo tzdata git openssh-client tar xz curl \
     && apk add --no-cache $runDeps \
     && arch=$TARGETARCH && if [ "q$arch" = "q386" ];then arch="x86"; fi && if [ "q$arch" = "qarm64" ];then arch="aarch64"; fi \
-    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/latest/download/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
+    && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v2.2.0.3/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
     { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
