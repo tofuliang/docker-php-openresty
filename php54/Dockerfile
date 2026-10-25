@@ -21,7 +21,7 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
+ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F F38252826ACD957EF380D39F2F7956BC5DA04B5D"
 
 ARG PHP_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2"
 ARG PHP_ASC_URL="https://www.php.net/distributions/php-5.4.45.tar.bz2.asc"
@@ -112,7 +112,7 @@ RUN set -x \
     wget -O php.tar.bz2.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key"; \
+    wget -qO- "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$key" | gpg --batch --import; \
     done; \
     gpg --batch --verify php.tar.bz2.asc php.tar.bz2; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -311,7 +311,7 @@ RUN set -x \
     && curl -fSkL --retry 5 https://github.com/just-containers/s6-overlay/releases/download/v2.2.0.3/s6-overlay-${arch}.tar.gz| tar xfz - -C / \
     && if [ "$(command -v upx)q" != "q" ];then \
     if [ "$(echo $TARGETARCH|grep -E 'amd64|386')q" != "q" ];then \
-    { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; }; \
+    { find /usr/local -size -95k -type f -perm +0111 -exec upx --best '{}' + || true; } \
     && { find /usr/local -type f -perm +0111 -exec upx --lzma '{}' + || true; }; \
     else \
     { find /usr/local -size +1024 -type f -perm +0111 ! -name "composer*" -exec upx --lzma '{}' + || true; }; \
