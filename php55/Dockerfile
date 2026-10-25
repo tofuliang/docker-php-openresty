@@ -22,8 +22,8 @@ ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
 ARG GPG_KEYS="1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F"
 
-ARG PHP_URL="https://secure.php.net/get/php-5.5.38.tar.xz/from/this/mirror"
-ARG PHP_ASC_URL="https://secure.php.net/get/php-5.5.38.tar.xz.asc/from/this/mirror"
+ARG PHP_URL="https://www.php.net/distributions/php-5.5.38.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-5.5.38.tar.xz.asc"
 ARG PHP_SHA256="cb527c44b48343c8557fe2446464ff1d4695155a95601083e5d1f175df95580f"
 ARG PHP_MD5=""
 
@@ -111,7 +111,7 @@ RUN set -x \
     wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
     export GNUPGHOME="$(mktemp -d)"; \
     for key in $GPG_KEYS; do \
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key"; \
     done; \
     gpg --batch --verify php.tar.xz.asc php.tar.xz; \
     command -v gpgconf > /dev/null && gpgconf --kill all; \

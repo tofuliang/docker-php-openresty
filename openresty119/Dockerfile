@@ -142,7 +142,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && make -j`grep -c ^processor /proc/cpuinfo` \
     && make -j`grep -c ^processor /proc/cpuinfo` install_sw \
     && cd /tmp \
-    && curl -fSkL --retry 5 https://ftp.pcre.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSkL --retry 5 https://ftp.exim.org/pub/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && cd /tmp/pcre-${RESTY_PCRE_VERSION} \
     && ./configure \
