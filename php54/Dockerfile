@@ -220,7 +220,7 @@ RUN set -x \
     && phpize && ./configure --enable-shared --disable-static && make -j`grep -c ^processor /proc/cpuinfo` && make install \
     && docker-php-ext-enable tideways \
     # 使用pecl安装扩展
-    && pecl install redis-4.3.0 xdebug-2.4.1 imagick ZendOpcache \
+    && pecl install redis-4.3.0 xdebug-2.4.1 imagick-3.4.4 ZendOpcache \
     && if [ "q$TARGETARCH" != "q386" ];then \
     pecl install swoole-1.10.5 && docker-php-ext-enable swoole; \
     fi \
