@@ -3,8 +3,8 @@
   "php-builder-modern": { "mode": "multi", "arches": ["amd64", "386", "arm64", "armv7"] },
   "php-modern":         { "mode": "multi", "arches": ["amd64", "386", "arm64", "armv7"] },
 
-  "php53": { "arches": ["amd64"] },
-  "php54": { "arches": ["amd64"] },
+  "php53": { "arches": ["amd64", "386"] },
+  "php54": { "arches": ["amd64", "386"] },
   "php55": { "arches": ["amd64", "386", "arm64", "armv7"] },
   "php56": { "arches": ["amd64", "386", "arm64", "armv7"] },
   "php70": { "arches": ["amd64", "386", "arm64", "armv7"] },

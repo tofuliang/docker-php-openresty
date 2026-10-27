@@ -201,10 +201,10 @@ RUN set -x \
 RUN set -x \
     && sed -i 's/\/usr\/local\/etc\/php\/conf.d/\/usr\/local\/etc\/php${BRANCH}\/conf.d/' /usr/bin/docker-php-ext-enable \
     # 配置GD库,开启更多图片支持
-    && apk add --no-cache jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev bzip2-dev \
+    && apk add --no-cache jpeg-dev libpng-dev freetype-dev libxml2-dev libmcrypt-dev gettext-dev bzip2-dev aspell-dev net-snmp-dev \
     && docker-php-ext-configure gd --enable-gd-native-ttf --enable-gd-jis-conv --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd \
     # 安装常用扩展
-    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl tidy gd bcmath bz2 calendar dba exif gettext mcrypt mysql mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip \
+    && docker-php-ext-install -j`grep -c ^processor /proc/cpuinfo` intl tidy gd bcmath bz2 calendar dba exif gettext mcrypt mysql mysqli pdo_mysql shmop soap sockets sysvmsg sysvsem sysvshm zip pspell snmp \
     # 从源码编译安装支持sasl的memcached扩展
     && curl -fSkL --retry 5 http://pecl.php.net/get/memcached-2.2.0.tgz -o /usr/src/memcached-2.2.0.tgz \
     && tar xzf /usr/src/memcached-2.2.0.tgz -C /usr/src \
