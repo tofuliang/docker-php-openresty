@@ -126,8 +126,11 @@ RUN set -x && echo $TARGETARCH \
     && docker-php-ext-configure gd --with-webp-dir --with-jpeg-dir --with-xpm-dir --with-png-dir --with-zlib-dir --with-freetype-dir --with-gd >> ${LOG_FILE} 2>&1 \
     # 安装常用扩展 build fail with new icu-dev
     && docker-php-ext-install -j$JOBS gd >> ${LOG_FILE} 2>&1
-# intl 未安装：PHP 7.0 的 ext/intl 在 builder(alpine 3.14, ICU 67) 下编译失败
-# （CI 实测 exit 2；同一份源码在 ICU 59/60 上可编过）。等 ICU 版本降级或 PHP 7.0 补丁再议。
+# PHP 7.0 的 ext/intl 假设 ICU 符号在全局命名空间（老 ICU 默认如此）；
+# alpine 3.14 的 ICU 67 启用了符号重命名，补 -DU_USING_ICU_NAMESPACE=1 即可编过（实测通过）。
+RUN set -x && echo $TARGETARCH \
+    && CPPFLAGS="-DU_USING_ICU_NAMESPACE=1" CXXFLAGS="-DU_USING_ICU_NAMESPACE=1" \
+       docker-php-ext-install -j$JOBS intl >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && docker-php-ext-install -j$JOBS bcmath >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
