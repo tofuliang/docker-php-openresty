@@ -30,8 +30,9 @@ for arg in "$@"; do
   esac
 done
 
-# <branch>-<archc>-<run_id>，调试模式为 debug-<branch>-<archc>-<run_id>
-temp_re='^(debug-)?[A-Za-z0-9._-]+-linux_[a-z0-9_]+-[0-9]+$'
+# <branch>-<archc>-<run_id>；调试模式为 debug-<branch>-<archc>-<run_id>。
+# 早期流水线（RUN_TAG 之前）推的是 <branch>-<archc>，没有 run_id 后缀，一并清理。
+temp_re='^(debug-)?[A-Za-z0-9._-]+-linux_[a-z0-9_]+(-[0-9]+)?$'
 
 # 先完整收集再删除：边翻页边删除会因为结果集变化而漏掉条目
 tmp_tags=$(mktemp)
