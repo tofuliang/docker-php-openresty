@@ -231,10 +231,10 @@ RUN set -x && echo $TARGETARCH \
     && pecl install imagick >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qamd64" ] || [ "q$TARGETARCH" = "qarm64" ] ;then \
-    cd /usr/src && for i in $(seq 1 8); do curl -fSkL --max-time 120 --retry 2 "https://pecl.php.net/get/swoole-6.2.4.tgz" -o "swoole-6.2.4.tgz" && break; sleep 10; done \
-    && test -s /usr/src/swoole-6.2.4.tgz \
-    && tar xzf /usr/src/swoole-6.2.4.tgz -C /usr/src \
-    && cd /usr/src/swoole-6.2.4 \
+    cd /usr/src && for i in $(seq 1 8); do curl -fSkL --max-time 120 --retry 2 "https://pecl.php.net/get/swoole-6.2.5.tgz" -o "swoole-6.2.5.tgz" && break; sleep 10; done \
+    && test -s /usr/src/swoole-6.2.5.tgz \
+    && tar xzf /usr/src/swoole-6.2.5.tgz -C /usr/src \
+    && cd /usr/src/swoole-6.2.5 \
     && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
@@ -244,9 +244,9 @@ RUN set -x && echo $TARGETARCH \
 # armv7 images ship without swoole (php83 already does the same).
 # RUN set -x && echo $TARGETARCH \
 #     && if [ "q$TARGETARCH" = "qarm" ] ;then \
-#     cd /usr/src && pecl download swoole-6.2.4 \
-#     && tar xzf /usr/src/swoole-6.2.4.tgz -C /usr/src \
-#     && cd /usr/src/swoole-6.2.4 \
+#     cd /usr/src && pecl download swoole-6.2.5 \
+#     && tar xzf /usr/src/swoole-6.2.5.tgz -C /usr/src \
+#     && cd /usr/src/swoole-6.2.5 \
 #     && sed -i 's|return check_pthread_return_value(pthread_getname_np(pthread_self(), buf, len));|if (len) { buf[0] = 0; } return true;|' src/os/base.cc \
 #     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
 #     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
