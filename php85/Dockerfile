@@ -23,11 +23,11 @@ ARG PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_
 ARG PHP_CPPFLAGS="$PHP_CFLAGS"
 ARG PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ARG GPG_KEYS="74E44BC9067701A5"
+ARG GPG_KEYS="AA23F5BE9C7097D4"
 
-ARG PHP_URL="https://www.php.net/distributions/php-8.5.12.tar.xz"
-ARG PHP_ASC_URL="https://www.php.net/distributions/php-8.5.12.tar.xz.asc"
-ARG PHP_SHA256="08bc2eba2a588654ade1357174aa646b761556c862dda0678345ee29ed481209"
+ARG PHP_URL="https://www.php.net/distributions/php-8.5.13.tar.xz"
+ARG PHP_ASC_URL="https://www.php.net/distributions/php-8.5.13.tar.xz.asc"
+ARG PHP_SHA256="607602acaf0c3061818e9916ec44a058e8b3d43959a83862b9cd3ec7bf5b785f"
 ARG PHP_MD5=""
 
 COPY docker-php-source /usr/bin/
