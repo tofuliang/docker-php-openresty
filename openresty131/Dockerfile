@@ -16,7 +16,7 @@ ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.22.7"
 ARG RESTY_VERSION="1.31.9.1"
 # https://github.com/openresty/openresty-packaging/blob/master/alpine/openresty-openssl3/APKBUILD
-ARG RESTY_OPENSSL_VERSION="3.5.8"
+ARG RESTY_OPENSSL_VERSION="3.5.9"
 ARG RESTY_OPENSSL_PATCH_VERSION="3.5.5"
 ARG RESTY_OPENSSL_URL_BASE="https://github.com/openssl/openssl/releases/download/openssl-${RESTY_OPENSSL_VERSION}"
 # LEGACY:  "https://www.openssl.org/source/old/1.1.1"
