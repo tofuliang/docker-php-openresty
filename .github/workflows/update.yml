@@ -45,6 +45,12 @@ jobs:
             fi
             rm -f "php${b}/update.sh"
           done
+          for b in openresty131; do
+            if ! .github/scripts/update-openresty.sh "$b"; then
+              echo "::error::update failed for ${b}"
+              rc=1
+            fi
+          done
           # GitHub 会在公共仓库长期无提交后自动停用 schedule（阈值 60 天），
           # 这里按 30 天兜底：往 .github/keepalive/ 写心跳文件，用一次提交保持仓库活跃。
           age_days=$(( ( $(date -u +%s) - $(git log -1 --format=%ct) ) / 86400 ))

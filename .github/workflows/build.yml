@@ -34,6 +34,7 @@ on:
     branches: [master]
     paths:
       - '.github/branches.json'
+      - 'openresty131/**'
 
 permissions:
   contents: write
@@ -63,13 +64,23 @@ jobs:
       merge: ${{ steps.plan.outputs.merge }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: preflight
         run: |
           bash -n .github/scripts/*.sh
           jq empty .github/branches.json
+      - id: changed
+        if: github.event_name == 'push'
+        run: |
+          changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" 2>/dev/null || true)
+          if [ -n "$changed" ] && ! grep -qx '\.github/branches\.json' <<<"$changed"; then
+            branches=$(echo "$changed" | cut -d/ -f1 | sort -u | jq -R . | jq -sc --slurpfile cfg .github/branches.json '[.[] | select(. as $b | $cfg[0] | has($b))] | join(" ")')
+            echo "branches=${branches}" >> "$GITHUB_OUTPUT"
+          fi
       - id: plan
         env:
-          INPUT: ${{ inputs.branches }}
+          INPUT: ${{ inputs.branches || steps.changed.outputs.branches }}
           PAYLOAD: ${{ toJSON(github.event.client_payload.branches) }}
           DEBUG_BRANCH: ${{ inputs.debug_branch }}
         run: .github/scripts/prepare-matrix.sh
