@@ -75,7 +75,7 @@ jobs:
         run: |
           changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" 2>/dev/null || true)
           if [ -n "$changed" ] && ! grep -qx '\.github/branches\.json' <<<"$changed"; then
-            branches=$(echo "$changed" | cut -d/ -f1 | sort -u | jq -R . | jq -sc --slurpfile cfg .github/branches.json '[.[] | select(. as $b | $cfg[0] | has($b))] | join(" ")')
+            branches=$(echo "$changed" | cut -d/ -f1 | sort -u | jq -R . | jq -rsc --slurpfile cfg .github/branches.json '[.[] | select(. as $b | $cfg[0] | has($b))] | join(" ")')
             echo "branches=${branches}" >> "$GITHUB_OUTPUT"
           fi
       - id: plan
