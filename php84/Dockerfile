@@ -219,19 +219,19 @@ RUN set -x && echo $TARGETARCH \
     && pecl install imap-1.0.3 >> ${LOG_FILE} 2>&1
 RUN set -x && echo $TARGETARCH \
     && if [ "q$TARGETARCH" = "qamd64" ] || [ "q$TARGETARCH" = "qarm64" ] ;then \
-    cd /usr/src && for i in $(seq 1 8); do curl -fSkL --max-time 120 --retry 2 "https://pecl.php.net/get/swoole-6.2.6.tgz" -o "swoole-6.2.6.tgz" && break; sleep 10; done \
-    && test -s /usr/src/swoole-6.2.6.tgz \
-    && tar xzf /usr/src/swoole-6.2.6.tgz -C /usr/src \
-    && cd /usr/src/swoole-6.2.6 \
+    cd /usr/src && for i in $(seq 1 8); do curl -fSkL --max-time 120 --retry 2 "https://pecl.php.net/get/swoole-6.3.0.tgz" -o "swoole-6.3.0.tgz" && break; sleep 10; done \
+    && test -s /usr/src/swoole-6.3.0.tgz \
+    && tar xzf /usr/src/swoole-6.3.0.tgz -C /usr/src \
+    && cd /usr/src/swoole-6.3.0 \
     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
     && docker-php-ext-enable swoole || { echo 'swoole build failed'; grep -B5 -E 'error:|Error [12]' ${LOG_FILE} | tail -n 80; tail -n 40 ${LOG_FILE}; exit 1; } \
     fi
 # RUN set -x && echo $TARGETARCH \
 #     && if [ "q$TARGETARCH" = "q386" ];then \
-#     cd /usr/src && pecl download swoole-6.2.6 \
-#     && tar xzf /usr/src/swoole-6.2.6.tgz -C /usr/src \
-#     && cd /usr/src/swoole-6.2.6 \
+#     cd /usr/src && pecl download swoole-6.3.0 \
+#     && tar xzf /usr/src/swoole-6.3.0.tgz -C /usr/src \
+#     && cd /usr/src/swoole-6.3.0 \
 #     && phpize >> ${LOG_FILE} 2>&1 && ./configure --enable-shared --disable-static --enable-openssl --enable-http2 --enable-mysqlnd --enable-sockets >> ${LOG_FILE} 2>&1 \
 #     && make -j$JOBS >> ${LOG_FILE} 2>&1 && make install >> ${LOG_FILE} 2>&1 \
 #     && docker-php-ext-enable swoole; \
